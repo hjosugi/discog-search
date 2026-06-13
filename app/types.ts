@@ -52,7 +52,7 @@ export interface ExtraArtist {
   resource_url: string
 }
 
-export interface SearchParam {
+export interface SearchParam extends Record<string, string | number | null | undefined> {
   page: number
   q?: string | null
   artist?: string | null
