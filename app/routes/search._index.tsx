@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useLoaderData, useSearchParams } from "@remix-run/react"
+import { useEffect, useState } from "react"
+import { useFetcher, useLoaderData, useSearchParams } from "@remix-run/react"
 import { discogsFetch } from "../utils/discogsAuthMiddleware"
 import {
   Box,
@@ -14,10 +14,14 @@ import {
 import { ResultList } from "../components/ResultList"
 import { SearchParam, SearchResult } from "../types"
 
+type SuggestionData = {
+  suggestions: SearchResult[]
+}
+
 export async function loader({ request }: { request: Request }) {
   const url = new URL(request.url)
 
-  const q = url.searchParams.get("q")
+  const q = url.searchParams.get("q") || url.searchParams.get("artist")
   const artist = url.searchParams.get("artist")
   const credit = url.searchParams.get("credit")
   const genre = url.searchParams.get("genre")
@@ -28,7 +32,6 @@ export async function loader({ request }: { request: Request }) {
 
   const params: SearchParam = {
     q,
-    artist,
     credit,
     genre,
     type: "master",
@@ -83,22 +86,49 @@ export default function SearchPage() {
     isSearching,
   }: { results: SearchResult[]; isSearching: boolean } = useLoaderData()
   const [searchParams] = useSearchParams()
+  const suggestionsFetcher = useFetcher<SuggestionData>()
 
-  const [q, setq] = useState(() => searchParams.get("q") || "")
-  const [artist, setArtist] = useState(() => searchParams.get("artist") || "")
+  const [q, setQ] = useState(
+    () => searchParams.get("q") || searchParams.get("artist") || ""
+  )
   const [credit, setcredit] = useState(() => searchParams.get("credit") || "")
   const [genre, setGenre] = useState(() => searchParams.get("genre") || "")
+  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false)
 
-  const isSearchDisabled = !q && !artist && !credit && !genre
+  const isSearchDisabled = !q && !credit && !genre
+  const suggestions = suggestionsFetcher.data?.suggestions || []
+  const showSuggestions =
+    isSuggestionOpen && q.trim().length >= 2 && suggestions.length > 0
+
+  useEffect(() => {
+    const query = q.trim()
+    if (query.length < 2) return
+
+    const timeout = window.setTimeout(() => {
+      const params = new URLSearchParams({ q: query })
+      if (credit) params.set("credit", credit)
+      if (genre) params.set("genre", genre)
+      suggestionsFetcher.load(`/search/suggestions?${params.toString()}`)
+    }, 250)
+
+    return () => window.clearTimeout(timeout)
+  }, [credit, genre, q, suggestionsFetcher])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const params = new URLSearchParams()
     if (q) params.append("q", q)
-    if (artist) params.append("artist", artist)
     if (credit) params.append("credit", credit)
     if (genre) params.append("genre", genre)
     window.location.search = params.toString()
+  }
+
+  const buildSuggestionHref = (suggestion: SearchResult) => {
+    const params = new URLSearchParams()
+    params.set("q", suggestion.title)
+    if (credit) params.set("credit", credit)
+    if (genre) params.set("genre", genre)
+    return `/search/${suggestion.id}?${params.toString()}`
   }
 
   return (
@@ -107,22 +137,61 @@ export default function SearchPage() {
         Discogs 演奏者検索
       </Heading>
       <Text fontSize="sm" color="gray.600" mb={4}>
-        曲名、アーティスト名、またはクレジット名で検索できます。
+        曲名とアーティスト名をまとめて、あいまいに検索できます。
       </Text>
 
       <VStack as="form" onSubmit={handleSubmit} spacing={2} align="stretch">
-        <Input
-          placeholder="楽曲名"
-          value={q}
-          onChange={(e) => setq(e.target.value)}
-          size="sm"
-        />
-        <Input
-          placeholder="アーティスト名"
-          value={artist}
-          onChange={(e) => setArtist(e.target.value)}
-          size="sm"
-        />
+        <Box position="relative">
+          <Input
+            placeholder="曲名・アーティスト名（例: Thriller Michael Jackson）"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value)
+              setIsSuggestionOpen(true)
+            }}
+            onFocus={() => setIsSuggestionOpen(true)}
+            onBlur={() => setIsSuggestionOpen(false)}
+            size="sm"
+            autoComplete="off"
+          />
+          {showSuggestions && (
+            <Box
+              position="absolute"
+              zIndex={10}
+              top="calc(100% + 4px)"
+              left={0}
+              right={0}
+              bg="white"
+              borderWidth="1px"
+              borderColor="gray.200"
+              borderRadius="md"
+              boxShadow="md"
+              overflow="hidden"
+            >
+              {suggestions.map((suggestion) => (
+                <Box
+                  key={suggestion.id}
+                  as="a"
+                  href={buildSuggestionHref(suggestion)}
+                  display="block"
+                  px={3}
+                  py={2}
+                  _hover={{ bg: "gray.50" }}
+                  onMouseDown={(event) => event.preventDefault()}
+                >
+                  <Text fontSize="sm" fontWeight="medium" noOfLines={1}>
+                    {suggestion.title}
+                  </Text>
+                  {suggestion.year && (
+                    <Text fontSize="xs" color="gray.500">
+                      {suggestion.year}
+                    </Text>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
         <Input
           placeholder="クレジット名（例: Drums, Bass, Guitar）"
           value={credit}
@@ -166,7 +235,7 @@ export default function SearchPage() {
             )}
             <ResultList
               results={results}
-              searchParams={{ q, artist, credit, genre }}
+              searchParams={{ q, credit, genre }}
             />
           </>
         )}
