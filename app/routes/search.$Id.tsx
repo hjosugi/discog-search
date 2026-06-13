@@ -1,16 +1,65 @@
-import { useLoaderData, Link } from "@remix-run/react"
+import { useMemo } from "react"
+import { useLoaderData, Link as RemixLink } from "@remix-run/react"
+import {
+  Badge,
+  Box,
+  Button,
+  Divider,
+  Heading,
+  HStack,
+  Image,
+  Link,
+  SimpleGrid,
+  Stack,
+  Text,
+  VStack,
+  Wrap,
+  WrapItem,
+} from "@chakra-ui/react"
 import { discogsFetch } from "~/utils/discogsAuthMiddleware"
 import {
-  Box,
-  Heading,
-  Text,
-  Image,
-  VStack,
-  HStack,
-  Button,
-} from "@chakra-ui/react"
-import { TrackItem } from "~/types"
-import { fontFace } from "@fluentui/react"
+  DiscogsMaster,
+  DiscogsRelease,
+  DiscogsVideo,
+  ExtraArtist,
+  TrackItem,
+} from "~/types"
+
+type Credit = ExtraArtist & {
+  source: "track" | "release"
+  isGlobal: boolean
+}
+
+type LoaderData = {
+  master: DiscogsMaster
+  release: DiscogsRelease
+  selectedTrackPosition: string | null
+  searchQuery: string
+  backQuery: string
+}
+
+const PERFORMANCE_ROLE_PATTERNS = [
+  "drum",
+  "percussion",
+  "bass",
+  "guitar",
+  "vocal",
+  "voice",
+  "piano",
+  "keyboard",
+  "synth",
+  "organ",
+  "sax",
+  "flute",
+  "trumpet",
+  "trombone",
+  "horn",
+  "violin",
+  "viola",
+  "cello",
+  "strings",
+  "performer",
+]
 
 export async function loader({
   params,
@@ -21,17 +70,33 @@ export async function loader({
 }) {
   const url = new URL(request.url)
   const searchParams = new URLSearchParams(url.search)
-  const q = searchParams.toString()
   const albumId = params.Id
-  const track = searchParams.get("track")
+  const requestedTrack = searchParams.get("track")
+  const searchQuery = searchParams.get("q") || ""
 
   if (!albumId) {
     throw new Response("Album ID is required", { status: 400 })
   }
 
   try {
-    const albumData = await discogsFetch(`masters/${albumId}`)
-    return { album: albumData, track, q }
+    const master = (await discogsFetch(`masters/${albumId}`)) as DiscogsMaster
+    const release = master.main_release
+      ? ((await discogsFetch(`releases/${master.main_release}`)) as DiscogsRelease)
+      : (master as DiscogsRelease)
+
+    const selectedTrackPosition =
+      requestedTrack ||
+      findBestTrackMatch(release.tracklist || master.tracklist || [], searchQuery)
+        ?.position ||
+      null
+
+    return {
+      master,
+      release,
+      selectedTrackPosition,
+      searchQuery,
+      backQuery: searchParams.toString(),
+    }
   } catch (error) {
     console.error("Failed to fetch album data:", error)
     throw new Response("Failed to fetch album data", { status: 500 })
@@ -39,100 +104,378 @@ export async function loader({
 }
 
 export default function AlbumView() {
-  const { album, q } = useLoaderData<{
-    album: any
-    q: string
-  }>()
+  const { master, release, selectedTrackPosition, searchQuery, backQuery } =
+    useLoaderData<LoaderData>()
+  const tracks = release.tracklist || master.tracklist || []
+  const selectedTrack = useMemo(
+    () =>
+      tracks.find((track) => track.position === selectedTrackPosition) ||
+      findBestTrackMatch(tracks, searchQuery) ||
+      tracks[0],
+    [searchQuery, selectedTrackPosition, tracks]
+  )
+  const selectedCredits = getTrackCredits(selectedTrack, tracks, release.extraartists)
+  const performanceCredits = selectedCredits.filter((credit) =>
+    isPerformanceRole(credit.role)
+  )
+  const otherCredits = selectedCredits.filter(
+    (credit) => !isPerformanceRole(credit.role)
+  )
+  const artistName =
+    release.artists_sort ||
+    release.artists?.map((artist) => artist.name).join(", ") ||
+    master.artists?.map((artist) => artist.name).join(", ") ||
+    ""
+  const playQuery = [artistName, selectedTrack?.title || release.title]
+    .filter(Boolean)
+    .join(" ")
+  const videos = getMatchingVideos(release.videos || [], selectedTrack?.title)
 
   return (
-    <VStack spacing={2} p={1} align="center" w="full" maxH="90vh" mt="5%">
-      <Box w="full">
-        <HStack
-          spacing={6}
-          align="start"
-          w="full"
-          justify="center"
-          flexWrap="wrap"
-        >
+    <Box p={{ base: 4, md: 6 }} maxW="1040px" mx="auto">
+      <Stack
+        direction={{ base: "column", md: "row" }}
+        spacing={{ base: 4, md: 6 }}
+        align="start"
+      >
+        {getCoverImage(release, master) ? (
           <Image
-            src={album.images[0].uri}
-            alt={album.title}
-            boxSize={{ base: "25%" }}
+            src={getCoverImage(release, master)}
+            alt={release.title}
+            boxSize={{ base: "150px", md: "190px" }}
             objectFit="cover"
             borderRadius="md"
           />
+        ) : (
+          <Box boxSize={{ base: "150px", md: "190px" }} bg="gray.100" />
+        )}
 
-          <VStack align="flex-start" spacing={2} maxW="lg" ml={1}>
-            <Heading as="h1" size={{ base: "sm", md: "md" }} fontWeight="bold">
-              {album.title}
+        <VStack align="stretch" spacing={3} flex="1">
+          <Box>
+            <Heading as="h1" size={{ base: "md", md: "lg" }}>
+              {release.title}
             </Heading>
-            <Text fontSize={{ base: "xs", md: "sm" }}>
-              <strong>Year: </strong> {album.year}
+            <Text color="gray.600" fontSize="sm">
+              {artistName}
+              {release.year ? ` / ${release.year}` : ""}
             </Text>
-
-            <Text fontSize={{ base: "sm", md: "md" }} fontWeight="bold">
-              Artist:{" "}
-              {album.artists.map((artist: any) => (
-                <Text
-                  as="span"
-                  key={artist.id}
-                  fontSize={{ base: "xs", md: "sm" }}
-                  fontWeight="normal"
-                >
-                  {artist.name}{" "}
-                </Text>
-              ))}
-            </Text>
-
-            {album.extraartists?.length > 0 && (
-              <Text fontSize={{ base: "sm", md: "md" }} fontWeight="bold">
-                Personnels:{" "}
-                {album.extraartists.map((extraArtist: any) => (
-                  <Text as="span" key={extraArtist.id}>
-                    {extraArtist.name}
-                  </Text>
-                ))}
-              </Text>
-            )}
-
-            <Link
-              target="_blank"
-              to={`https://www.discogs.com/master/${album.id}`}
-            >
-              <Button colorScheme="blue" variant="link">
-                Discogs
-              </Button>
-            </Link>
-          </VStack>
-        </HStack>
-      </Box>
-      <VStack
-        h={{ base: "50vh", md: "50vh" }}
-        overflowY="auto"
-        w={{ base: "80%", md: "60%" }}
-        pl="12%"
-        pr="10%"
-      >
-        {album.tracklist.map((trackItem: TrackItem, index: number) => (
-          <Box key={index} w="full" p={1} _hover={{ bg: "gray.50" }}>
-            <HStack justify="space-between" w="full">
-              <Text fontSize={{ base: "xs", md: "md" }}>{trackItem.title}</Text>
-              <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600">
-                {trackItem.duration}
-              </Text>
-            </HStack>
           </Box>
-        ))}
-      </VStack>
-      <Link to={`/search?${q}`}>
-        <Button
-          colorScheme="blue"
-          size={{ base: "md", md: "lg" }}
-          variant="link"
+
+          {selectedTrack && (
+            <Box bg="gray.50" borderRadius="md" p={3}>
+              <Text fontSize="xs" color="gray.600" mb={1}>
+                選択中の曲
+              </Text>
+              <HStack justify="space-between" align="start">
+                <Box>
+                  <Heading as="h2" size="md">
+                    {selectedTrack.title}
+                  </Heading>
+                  <Text fontSize="sm" color="gray.600">
+                    {selectedTrack.position}
+                    {selectedTrack.duration ? ` / ${selectedTrack.duration}` : ""}
+                  </Text>
+                </Box>
+                <Badge colorScheme="blue">{performanceCredits.length} players</Badge>
+              </HStack>
+            </Box>
+          )}
+
+          <Wrap spacing={2}>
+            {buildStreamingLinks(playQuery).map((service) => (
+              <WrapItem key={service.label}>
+                <Button
+                  as="a"
+                  href={service.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  colorScheme={service.colorScheme}
+                  size="sm"
+                >
+                  {service.label}
+                </Button>
+              </WrapItem>
+            ))}
+            {release.uri && (
+              <WrapItem>
+                <Button
+                  as="a"
+                  href={release.uri}
+                  target="_blank"
+                  rel="noreferrer"
+                  variant="outline"
+                  size="sm"
+                >
+                  Discogs
+                </Button>
+              </WrapItem>
+            )}
+          </Wrap>
+        </VStack>
+      </Stack>
+
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5} mt={6}>
+        <Box>
+          <SectionTitle>演奏者</SectionTitle>
+          <CreditList
+            credits={performanceCredits}
+            emptyText="この曲に紐づく演奏クレジットは見つかりませんでした。"
+          />
+
+          {otherCredits.length > 0 && (
+            <Box mt={5}>
+              <SectionTitle>その他のクレジット</SectionTitle>
+              <CreditList credits={otherCredits} />
+            </Box>
+          )}
+
+          {videos.length > 0 && (
+            <Box mt={5}>
+              <SectionTitle>動画</SectionTitle>
+              <VStack align="stretch" spacing={2}>
+                {videos.map((video) => (
+                  <Link
+                    key={video.uri}
+                    href={video.uri}
+                    target="_blank"
+                    rel="noreferrer"
+                    color="blue.600"
+                    fontSize="sm"
+                  >
+                    {video.title}
+                  </Link>
+                ))}
+              </VStack>
+            </Box>
+          )}
+        </Box>
+
+        <Box>
+          <SectionTitle>トラック</SectionTitle>
+          <VStack align="stretch" spacing={1} maxH="58vh" overflowY="auto">
+            {tracks.map((track) => {
+              const isSelected = track.position === selectedTrack?.position
+              const params = new URLSearchParams(backQuery)
+              params.set("track", track.position)
+
+              return (
+                <Box
+                  key={`${track.position}-${track.title}`}
+                  as={RemixLink}
+                  to={`/search/${master.id}?${params.toString()}`}
+                  p={2}
+                  borderRadius="md"
+                  bg={isSelected ? "blue.50" : "transparent"}
+                  borderWidth="1px"
+                  borderColor={isSelected ? "blue.200" : "transparent"}
+                  _hover={{ bg: isSelected ? "blue.50" : "gray.50" }}
+                >
+                  <HStack justify="space-between" align="start">
+                    <Box>
+                      <Text fontSize="sm" fontWeight={isSelected ? "bold" : "normal"}>
+                        {track.title}
+                      </Text>
+                      <Text fontSize="xs" color="gray.600">
+                        {track.position}
+                      </Text>
+                    </Box>
+                    {track.duration && (
+                      <Text fontSize="xs" color="gray.600">
+                        {track.duration}
+                      </Text>
+                    )}
+                  </HStack>
+                </Box>
+              )
+            })}
+          </VStack>
+        </Box>
+      </SimpleGrid>
+
+      <Divider my={6} />
+      <Button as={RemixLink} to={`/search${backQuery ? `?${backQuery}` : ""}`} variant="link">
+        Back to List
+      </Button>
+    </Box>
+  )
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <Heading as="h2" size="sm" mb={3}>
+      {children}
+    </Heading>
+  )
+}
+
+function CreditList({
+  credits,
+  emptyText,
+}: {
+  credits: Credit[]
+  emptyText?: string
+}) {
+  if (credits.length === 0) {
+    return (
+      <Text color="gray.600" fontSize="sm">
+        {emptyText || "該当するクレジットはありません。"}
+      </Text>
+    )
+  }
+
+  return (
+    <VStack align="stretch" spacing={2}>
+      {dedupeCredits(credits).map((credit) => (
+        <Box
+          key={`${credit.name}-${credit.role}-${credit.tracks}-${credit.source}`}
+          p={3}
+          borderWidth="1px"
+          borderColor="gray.200"
+          borderRadius="md"
         >
-          Back to List
-        </Button>
-      </Link>
+          <HStack justify="space-between" align="start" spacing={3}>
+            <Box>
+              <Text fontWeight="bold">{credit.name}</Text>
+              <Text fontSize="sm" color="gray.700">
+                {credit.role}
+              </Text>
+            </Box>
+            <Badge colorScheme={credit.source === "track" ? "green" : "gray"}>
+              {credit.source === "track" ? "track" : credit.isGlobal ? "album" : "range"}
+            </Badge>
+          </HStack>
+        </Box>
+      ))}
     </VStack>
   )
+}
+
+function findBestTrackMatch(tracks: TrackItem[], query: string) {
+  const normalizedQuery = normalize(query)
+  if (!normalizedQuery) return null
+
+  return (
+    tracks.find((track) => normalize(track.title) === normalizedQuery) ||
+    tracks.find((track) => normalize(track.title).includes(normalizedQuery)) ||
+    tracks.find((track) => normalizedQuery.includes(normalize(track.title))) ||
+    null
+  )
+}
+
+function getTrackCredits(
+  selectedTrack: TrackItem | undefined,
+  tracks: TrackItem[],
+  releaseCredits: ExtraArtist[] = []
+) {
+  if (!selectedTrack) return []
+
+  const directCredits = (selectedTrack.extraartists || []).map((artist) => ({
+    ...artist,
+    source: "track" as const,
+    isGlobal: false,
+  }))
+  const releaseLevelCredits = releaseCredits
+    .filter((artist) => creditAppliesToTrack(artist.tracks, selectedTrack, tracks))
+    .map((artist) => ({
+      ...artist,
+      source: "release" as const,
+      isGlobal: !artist.tracks,
+    }))
+
+  return [...directCredits, ...releaseLevelCredits]
+}
+
+function creditAppliesToTrack(
+  creditTracks: string,
+  selectedTrack: TrackItem,
+  tracks: TrackItem[]
+) {
+  if (!creditTracks) return true
+
+  const position = normalizePosition(selectedTrack.position)
+  const allPositions = tracks.map((track) => normalizePosition(track.position))
+  const segments = creditTracks.split(",").map((segment) => segment.trim())
+
+  return segments.some((segment) => {
+    const normalizedSegment = normalizePosition(segment)
+    if (normalizedSegment === position) return true
+    if (!/\bto\b/i.test(segment) && !segment.includes("-")) return false
+
+    const [start, end] = segment
+      .split(/\s+to\s+|-/i)
+      .map((value) => normalizePosition(value))
+    const startIndex = allPositions.indexOf(start)
+    const endIndex = allPositions.indexOf(end)
+    const targetIndex = allPositions.indexOf(position)
+
+    return (
+      startIndex >= 0 &&
+      endIndex >= 0 &&
+      targetIndex >= Math.min(startIndex, endIndex) &&
+      targetIndex <= Math.max(startIndex, endIndex)
+    )
+  })
+}
+
+function isPerformanceRole(role: string) {
+  const normalizedRole = role.toLowerCase()
+  return PERFORMANCE_ROLE_PATTERNS.some((pattern) =>
+    normalizedRole.includes(pattern)
+  )
+}
+
+function dedupeCredits(credits: Credit[]) {
+  const seen = new Set<string>()
+  return credits.filter((credit) => {
+    const key = `${normalize(credit.name)}-${normalize(credit.role)}-${credit.source}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function getMatchingVideos(videos: DiscogsVideo[], trackTitle?: string) {
+  if (!trackTitle) return videos.slice(0, 3)
+
+  const matchedVideos = videos.filter((video) =>
+    normalize(video.title).includes(normalize(trackTitle))
+  )
+  return (matchedVideos.length > 0 ? matchedVideos : videos).slice(0, 3)
+}
+
+function buildStreamingLinks(query: string) {
+  const encoded = encodeURIComponent(query)
+  return [
+    {
+      label: "Apple Music",
+      href: `https://music.apple.com/us/search?term=${encoded}`,
+      colorScheme: "red",
+    },
+    {
+      label: "Spotify",
+      href: `https://open.spotify.com/search/${encoded}`,
+      colorScheme: "green",
+    },
+    {
+      label: "YouTube Music",
+      href: `https://music.youtube.com/search?q=${encoded}`,
+      colorScheme: "red",
+    },
+  ]
+}
+
+function getCoverImage(release: DiscogsRelease, master: DiscogsMaster) {
+  return release.images?.[0]?.uri || master.images?.[0]?.uri || null
+}
+
+function normalize(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+}
+
+function normalizePosition(value: string) {
+  return value.toUpperCase().replace(/\s+/g, "")
 }

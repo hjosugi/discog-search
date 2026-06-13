@@ -6,13 +6,17 @@ export async function discogsFetch(endpoint: string, params: any = {}) {
   const url = new URL(API_URL)
 
   // クエリパラメータがあれば追加
-  Object.keys(params).forEach((key) =>
-    url.searchParams.append(key, params[key])
-  )
+  Object.keys(params).forEach((key) => {
+    const value = params[key]
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.append(key, String(value))
+    }
+  })
 
   const response = await fetch(url.toString(), {
     headers: {
       Authorization: `Discogs key=${DISCOSG_API_KEY}, secret=${DISCOGS_API_SECRET}`,
+      "User-Agent": "discog-search/0.1",
     },
   })
 

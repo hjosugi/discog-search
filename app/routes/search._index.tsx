@@ -1,7 +1,15 @@
 import { useState } from "react"
 import { useLoaderData, useSearchParams } from "@remix-run/react"
 import { discogsFetch } from "../utils/discogsAuthMiddleware"
-import { Box, Input, Button, Spinner, Heading, VStack } from "@chakra-ui/react"
+import {
+  Box,
+  Input,
+  Button,
+  Spinner,
+  Heading,
+  VStack,
+  Text,
+} from "@chakra-ui/react"
 
 import { ResultList } from "../components/ResultList"
 import { SearchParam, SearchResult } from "../types"
@@ -18,15 +26,18 @@ export async function loader({ request }: { request: Request }) {
   }
 
   const params: SearchParam = {
-    q: q || artist || credit,
+    q,
+    artist,
+    credit,
+    genre,
     type: "master",
     per_page: 100,
-    page: 0,
+    page: 1,
   }
   let searchResults = await discogsFetch("database/search", params)
   let allResults = searchResults.results
 
-  let MAX = artist ? 3 : 1
+  const MAX = artist || credit ? 3 : 1
   while (
     searchResults.pagination &&
     searchResults.pagination.page < searchResults.pagination.pages &&
@@ -90,10 +101,13 @@ export default function SearchPage() {
   }
 
   return (
-    <Box p={5} maxW="600px" mx="auto">
-      <Heading as="h1" size="ml" mb={4}>
-        検索
+    <Box p={{ base: 4, md: 6 }} maxW="760px" mx="auto">
+      <Heading as="h1" size="md" mb={2}>
+        Discogs 演奏者検索
       </Heading>
+      <Text fontSize="sm" color="gray.600" mb={4}>
+        曲名、アーティスト名、またはクレジット名で検索できます。
+      </Text>
 
       <VStack as="form" onSubmit={handleSubmit} spacing={2} align="stretch">
         <Input
@@ -109,7 +123,7 @@ export default function SearchPage() {
           size="sm"
         />
         <Input
-          placeholder="credit名"
+          placeholder="クレジット名（例: Drums, Bass, Guitar）"
           value={credit}
           onChange={(e) => setcredit(e.target.value)}
           size="sm"
@@ -143,10 +157,17 @@ export default function SearchPage() {
         {isSearching ? (
           <Spinner size="ml" mt={4} />
         ) : (
-          <ResultList
-            results={results}
-            searchParams={{ q, artist, credit, genre }}
-          />
+          <>
+            {results.length > 0 && (
+              <Text fontSize="sm" color="gray.600" mb={2}>
+                {results.length} 件
+              </Text>
+            )}
+            <ResultList
+              results={results}
+              searchParams={{ q, artist, credit, genre }}
+            />
+          </>
         )}
       </Box>
     </Box>

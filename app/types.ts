@@ -1,3 +1,30 @@
+export interface DiscogsArtist {
+  id?: number
+  name: string
+  anv?: string
+  join?: string
+  role?: string
+  tracks?: string
+  resource_url?: string
+  thumbnail_url?: string
+}
+
+export interface DiscogsImage {
+  uri?: string
+  uri150?: string
+  width?: number
+  height?: number
+  type?: string
+}
+
+export interface DiscogsVideo {
+  uri: string
+  title: string
+  description?: string
+  duration?: number
+  embed?: boolean
+}
+
 export interface Album {
   id: number
   title: string
@@ -12,6 +39,7 @@ export interface TrackItem {
   type_: string
   title: string
   duration: string
+  extraartists?: ExtraArtist[]
 }
 
 export interface ExtraArtist {
@@ -27,9 +55,30 @@ export interface ExtraArtist {
 export interface SearchParam {
   page: number
   q?: string | null
+  artist?: string | null
+  credit?: string | null
+  genre?: string | null
   type: "master"
   per_page: number
 }
+
+export interface DiscogsMaster {
+  id: number
+  title: string
+  year?: number
+  artists?: DiscogsArtist[]
+  images?: DiscogsImage[]
+  tracklist?: TrackItem[]
+  extraartists?: ExtraArtist[]
+  main_release?: number
+  uri?: string
+}
+
+export interface DiscogsRelease extends DiscogsMaster {
+  videos?: DiscogsVideo[]
+  artists_sort?: string
+}
+
 export interface SearchResult {
   id: number
   title: string
