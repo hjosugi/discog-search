@@ -130,6 +130,7 @@ export default function AlbumView() {
     .filter(Boolean)
     .join(" ")
   const videos = getMatchingVideos(release.videos || [], selectedTrack?.title)
+  const coverImage = getCoverImage(release, master) || undefined
 
   return (
     <Box p={{ base: 4, md: 6 }} maxW="1040px" mx="auto">
@@ -138,9 +139,9 @@ export default function AlbumView() {
         spacing={{ base: 4, md: 6 }}
         align="start"
       >
-        {getCoverImage(release, master) ? (
+        {coverImage ? (
           <Image
-            src={getCoverImage(release, master)}
+            src={coverImage}
             alt={release.title}
             boxSize={{ base: "150px", md: "190px" }}
             objectFit="cover"

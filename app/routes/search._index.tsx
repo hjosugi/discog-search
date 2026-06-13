@@ -20,6 +20,7 @@ export async function loader({ request }: { request: Request }) {
   const q = url.searchParams.get("q")
   const artist = url.searchParams.get("artist")
   const credit = url.searchParams.get("credit")
+  const genre = url.searchParams.get("genre")
 
   if (!q && !artist && !credit) {
     return { results: [], isSearching: false }
