@@ -3,3 +3,13 @@ node_modules
 /.cache
 /build
 .env
+.env.*
+!.env.example
+
+# Local editor settings
+.vscode/settings.json
+.vscode/*.local.json
+
+# Logs and OS/editor noise
+*.log
+.DS_Store
