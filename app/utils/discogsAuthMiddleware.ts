@@ -1,4 +1,7 @@
-export async function discogsFetch(endpoint: string, params: any = {}) {
+export async function discogsFetch(
+  endpoint: string,
+  params: Record<string, string | number | null | undefined> = {}
+) {
   const API_URL = `https://api.discogs.com/${endpoint}`
   const DISCOSG_API_KEY = process.env.DISCOGS_API_KEY
   const DISCOGS_API_SECRET = process.env.DISCOGS_API_SECRET
@@ -6,9 +9,11 @@ export async function discogsFetch(endpoint: string, params: any = {}) {
   const url = new URL(API_URL)
 
   // クエリパラメータがあれば追加
-  Object.keys(params).forEach((key) =>
-    url.searchParams.append(key, params[key])
-  )
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== "") {
+      url.searchParams.append(key, String(value))
+    }
+  })
 
   const response = await fetch(url.toString(), {
     headers: {

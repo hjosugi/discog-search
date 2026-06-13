@@ -12,13 +12,17 @@ export async function loader({ request }: { request: Request }) {
   const q = url.searchParams.get("q")
   const artist = url.searchParams.get("artist")
   const credit = url.searchParams.get("credit")
+  const genre = url.searchParams.get("genre")
 
-  if (!q && !artist && !credit) {
+  if (!q && !artist && !credit && !genre) {
     return { results: [], isSearching: false }
   }
 
   const params: SearchParam = {
-    q: q || artist || credit,
+    q: q || undefined,
+    artist: artist || undefined,
+    credit: credit || undefined,
+    genre: genre || undefined,
     type: "master",
     per_page: 100,
     page: 0,
@@ -26,7 +30,7 @@ export async function loader({ request }: { request: Request }) {
   let searchResults = await discogsFetch("database/search", params)
   let allResults = searchResults.results
 
-  let MAX = artist ? 3 : 1
+  const MAX = artist ? 3 : 1
   while (
     searchResults.pagination &&
     searchResults.pagination.page < searchResults.pagination.pages &&
@@ -38,13 +42,13 @@ export async function loader({ request }: { request: Request }) {
   }
 
   const results: SearchResult[] = allResults
-    .filter((r: any) => {
+    .filter((r: SearchResult) => {
       if (artist) {
         return r.title.toLowerCase().includes(artist.toLowerCase())
       }
       return true
     })
-    .sort((a: any, b: any) => {
+    .sort((a: SearchResult, b: SearchResult) => {
       if (artist) {
         const artistA = a.title.toUpperCase()
         const artistB = b.title.toUpperCase()
@@ -77,7 +81,7 @@ export default function SearchPage() {
   const [credit, setcredit] = useState(() => searchParams.get("credit") || "")
   const [genre, setGenre] = useState(() => searchParams.get("genre") || "")
 
-  const isSearchDisabled = !q && !artist && !credit
+  const isSearchDisabled = !q && !artist && !credit && !genre
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

@@ -1,7 +1,7 @@
 import { Box, Image, Text } from "@chakra-ui/react"
 import { Link } from "@remix-run/react"
 
-import { SearchParam, SearchResult } from "../types"
+import { SearchResult } from "../types"
 export function ResultList({
   results,
   searchParams,
