@@ -64,6 +64,7 @@ function scoreResult(
       .join(" ")
   )
   const searchableText = `${normalizedTitle} ${metadata}`.trim()
+  const primaryArtist = getPrimaryArtist(result.title)
   let score = 0
 
   if (normalizedQuery) {
@@ -83,6 +84,17 @@ function scoreResult(
       searchableText.includes(token)
     )
     score += matchedCreditTokens.length * 4
+
+    const primaryArtistTokens = new Set(tokenize(primaryArtist))
+    const primaryArtistMatches = creditTokens.filter((token) =>
+      primaryArtistTokens.has(token)
+    )
+    if (
+      primaryArtistMatches.length === creditTokens.length &&
+      creditTokens.length > 0
+    ) {
+      score -= 24
+    }
   }
 
   if (genreTokens.length > 0) {
@@ -117,6 +129,10 @@ function normalizeForSearch(value = "") {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
+}
+
+function getPrimaryArtist(title: string) {
+  return normalizeForSearch(title.split(/\s+[-–—]\s+/)[0] || "")
 }
 
 function getYearValue(year?: string) {
