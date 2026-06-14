@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "discog-search",
+  // nodejs_compat + this date makes process.env populated from vars/secrets,
+  // so app/utils/discogsAuthMiddleware.ts keeps reading process.env.DISCOGS_TOKEN.
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./workers/app.ts",
+  "assets": {
+    "directory": "./build/client"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

@@ -1,132 +1,55 @@
-import { PassThrough } from "node:stream"
-
-import { createReadableStreamFromReadable } from "@react-router/node"
 import type { AppLoadContext, EntryContext } from "react-router"
 import { ServerRouter } from "react-router"
 import { isbot } from "isbot"
-import { renderToPipeableStream } from "react-dom/server"
+import { renderToReadableStream } from "react-dom/server"
 
 const ABORT_DELAY = 5_000
 
-export default function handleRequest(
+export default async function handleRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
   routerContext: EntryContext,
-  // This is ignored so we can keep it in the template for visibility.  Feel
-  // free to delete this parameter in your app if you're not using it!
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   loadContext: AppLoadContext
 ) {
-  return isbot(request.headers.get("user-agent") || "")
-    ? handleBotRequest(
-        request,
-        responseStatusCode,
-        responseHeaders,
-        routerContext
-      )
-    : handleBrowserRequest(
-        request,
-        responseStatusCode,
-        responseHeaders,
-        routerContext
-      )
-}
+  let shellRendered = false
+  const userAgent = request.headers.get("user-agent")
 
-function handleBotRequest(
-  request: Request,
-  responseStatusCode: number,
-  responseHeaders: Headers,
-  routerContext: EntryContext
-) {
-  return new Promise((resolve, reject) => {
-    let shellRendered = false
-    const { pipe, abort } = renderToPipeableStream(
-      <ServerRouter
-        context={routerContext}
-        url={request.url}
-      />,
-      {
-        onAllReady() {
-          shellRendered = true
-          const body = new PassThrough()
-          const stream = createReadableStreamFromReadable(body)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), ABORT_DELAY)
 
-          responseHeaders.set("Content-Type", "text/html")
+  const body = await renderToReadableStream(
+    <ServerRouter
+      context={routerContext}
+      url={request.url}
+    />,
+    {
+      signal: controller.signal,
+      onError(error: unknown) {
+        responseStatusCode = 500
+        // Log streaming rendering errors from inside the shell. Don't log
+        // errors encountered during initial shell rendering since they'll
+        // reject and get logged in handleDocumentRequest.
+        if (shellRendered) {
+          console.error(error)
+        }
+      },
+    }
+  )
+  shellRendered = true
 
-          resolve(
-            new Response(stream, {
-              headers: responseHeaders,
-              status: responseStatusCode,
-            })
-          )
+  // Ensure requests from bots and SPA Mode renders wait for all content to load
+  // before responding so we have a full document to send.
+  if ((userAgent && isbot(userAgent)) || routerContext.isSpaMode) {
+    await body.allReady
+  }
 
-          pipe(body)
-        },
-        onShellError(error: unknown) {
-          reject(error)
-        },
-        onError(error: unknown) {
-          responseStatusCode = 500
-          // Log streaming rendering errors from inside the shell.  Don't log
-          // errors encountered during initial shell rendering since they'll
-          // reject and get logged in handleDocumentRequest.
-          if (shellRendered) {
-            console.error(error)
-          }
-        },
-      }
-    )
+  body.allReady.finally(() => clearTimeout(timeoutId))
 
-    setTimeout(abort, ABORT_DELAY)
-  })
-}
-
-function handleBrowserRequest(
-  request: Request,
-  responseStatusCode: number,
-  responseHeaders: Headers,
-  routerContext: EntryContext
-) {
-  return new Promise((resolve, reject) => {
-    let shellRendered = false
-    const { pipe, abort } = renderToPipeableStream(
-      <ServerRouter
-        context={routerContext}
-        url={request.url}
-      />,
-      {
-        onShellReady() {
-          shellRendered = true
-          const body = new PassThrough()
-          const stream = createReadableStreamFromReadable(body)
-
-          responseHeaders.set("Content-Type", "text/html")
-
-          resolve(
-            new Response(stream, {
-              headers: responseHeaders,
-              status: responseStatusCode,
-            })
-          )
-
-          pipe(body)
-        },
-        onShellError(error: unknown) {
-          reject(error)
-        },
-        onError(error: unknown) {
-          responseStatusCode = 500
-          // Log streaming rendering errors from inside the shell.  Don't log
-          // errors encountered during initial shell rendering since they'll
-          // reject and get logged in handleDocumentRequest.
-          if (shellRendered) {
-            console.error(error)
-          }
-        },
-      }
-    )
-
-    setTimeout(abort, ABORT_DELAY)
+  responseHeaders.set("Content-Type", "text/html")
+  return new Response(body, {
+    headers: responseHeaders,
+    status: responseStatusCode,
   })
 }
