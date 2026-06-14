@@ -14,6 +14,11 @@ The UI uses three inputs:
 The URL uses `credit` as the primary query parameter. Older `person` links are
 still accepted as a fallback so existing links keep working.
 
+The important distinction is that `credit` is an upstream Discogs search
+parameter, while `role` is not. `credit` can narrow the initial API search.
+`role` can only be applied after a release has been loaded and its
+`extraartists.role` values are available.
+
 ## Discogs Request Model
 
 The app does not use a dedicated Discogs "personnel" endpoint. Personnel-style
@@ -23,6 +28,12 @@ search is implemented through Discogs database search filters:
 - `track=<title>` for track title matching.
 - `genre=<genre>` for genre filtering.
 - `type=release` when `credit` or `song` is present.
+
+There is intentionally no `personnel=<name>` request in the codebase. Discogs
+does not expose the app's target question, "find albums where this person is a
+sideman on this track/instrument", as a single stable search request. The app
+therefore treats `credit` search as a broad candidate finder and the detail page
+as the verification step.
 
 The `role` field is not sent to Discogs search because the public search API
 does not provide a reliable instrument-role filter. It is carried through the
@@ -48,6 +59,45 @@ The request builder is centralized in `app/utils/discogsSearch.ts`. It first
 tries a precise `track` search. If that returns no results for a song search, it
 falls back to `q=<song>` because Discogs track metadata can be uneven.
 
+Example candidate search requests:
+
+```text
+database/search?credit=Tony Williams&type=release&per_page=100&page=1
+database/search?credit=Tony Williams&track=Night In Tunisia&type=release&per_page=100&page=1
+```
+
+Fallback when the track filter is too narrow:
+
+```text
+database/search?credit=Tony Williams&q=Night In Tunisia&type=release&per_page=100&page=1
+```
+
+## Execution Path
+
+```text
+app/routes/search._index.tsx
+  loader()
+    -> searchDiscogsAlbums()
+      -> buildSearchParams()
+      -> fetchSearchPages()
+        -> discogsFetch()
+    -> rankSearchResults()
+
+app/components/ResultList.tsx
+  -> /search/:Id?kind=release&credit=...&song=...&role=...
+
+app/routes/search.$Id.tsx
+  loader()
+    -> fetchDiscogsRelease() or fetchDiscogsMaster()
+    -> findBestTrackMatch()
+    -> getTrackCredits()
+      -> creditAppliesToTrack()
+    -> filterCreditsByRole()
+```
+
+This split keeps the first page fast and broad, while the detail page does the
+slower and more specific track/role inspection.
+
 ## Ranking
 
 `app/utils/searchRanking.ts` deduplicates similar releases and scores results by:
@@ -59,6 +109,11 @@ falls back to `q=<song>` because Discogs track metadata can be uneven.
 
 This ranking is deliberately lightweight. It improves default ordering without
 pretending Discogs credits are perfectly normalized.
+
+For sideman discovery, the ranking also lowers results where the searched
+credit appears to be the primary artist in the result title. This helps surface
+albums where the person is credited on someone else's release before their own
+leader releases.
 
 ## Detail Flow
 
