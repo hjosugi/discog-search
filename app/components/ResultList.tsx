@@ -1,6 +1,7 @@
 import { Badge, Box, HStack, Image, Text, VStack, Wrap } from "@chakra-ui/react"
 import { Link } from "@remix-run/react"
 
+import { AppIcon } from "./AppIcon"
 import { SearchResult } from "../types"
 
 function buildSearchParams(searchParams: { [key: string]: string }) {
@@ -24,52 +25,83 @@ export function ResultList({
 
   return (
     <Box mt={5}>
-      {results.map((result) => (
-        <Box
-          key={result.id}
-          mb={3}
-          borderWidth="1px"
-          borderColor="gray.200"
-          borderRadius="md"
-          _hover={{ borderColor: "blue.200", bg: "gray.50" }}
-        >
-          <Link to={`/search/${result.id}${queryString ? `?${queryString}` : ""}`}>
-            <HStack align="start" spacing={3} p={3}>
-              {result.thumb ? (
-                <Image
-                  src={result.thumb}
-                  alt={result.title}
-                  boxSize={{ base: "56px", md: "64px" }}
-                  objectFit="cover"
-                  borderRadius="sm"
-                />
-              ) : (
-                <Box
-                  boxSize={{ base: "56px", md: "64px" }}
-                  bg="gray.100"
-                  borderRadius="sm"
-                  flexShrink={0}
-                />
-              )}
-              <VStack align="stretch" spacing={1} flex="1" minW={0}>
-                <Text fontSize="md" fontWeight="semibold" noOfLines={2}>
-                  {result.title}
-                </Text>
-                <Text fontSize="sm" color="gray.600" noOfLines={1}>
-                  {buildSummary(result)}
-                </Text>
-                <Wrap spacing={1} pt={1}>
-                  {buildTags(result).map((tag) => (
-                    <Badge key={tag} colorScheme="gray" fontWeight="normal">
-                      {tag}
-                    </Badge>
-                  ))}
-                </Wrap>
-              </VStack>
-            </HStack>
-          </Link>
-        </Box>
-      ))}
+      {results.map((result) => {
+        const summary = buildSummary(result)
+
+        return (
+          <Box
+            key={result.id}
+            mb={3}
+            bg="white"
+            borderWidth="1px"
+            borderColor="gray.200"
+            borderRadius="md"
+            transition="border-color 120ms ease, box-shadow 120ms ease"
+            _hover={{ borderColor: "blue.300", boxShadow: "sm" }}
+          >
+            <Link to={`/search/${result.id}${queryString ? `?${queryString}` : ""}`}>
+              <HStack align="start" spacing={3} p={3}>
+                {result.thumb ? (
+                  <Image
+                    src={result.thumb}
+                    alt={result.title}
+                    boxSize={{ base: "56px", md: "64px" }}
+                    objectFit="cover"
+                    borderRadius="sm"
+                    flexShrink={0}
+                  />
+                ) : (
+                  <Box
+                    alignItems="center"
+                    boxSize={{ base: "56px", md: "64px" }}
+                    bg="gray.100"
+                    borderRadius="sm"
+                    color="gray.400"
+                    display="flex"
+                    flexShrink={0}
+                    justifyContent="center"
+                  >
+                    <AppIcon name="disc" size={24} />
+                  </Box>
+                )}
+                <VStack align="stretch" spacing={2} flex="1" minW={0}>
+                  <HStack align="start" justify="space-between" spacing={3}>
+                    <Box minW={0}>
+                      <Text fontSize="md" fontWeight="semibold" noOfLines={2}>
+                        {result.title}
+                      </Text>
+                      {summary && (
+                        <HStack color="gray.600" spacing={1} mt={1}>
+                          <AppIcon name="tag" size={13} />
+                          <Text fontSize="sm" noOfLines={1}>
+                            {summary}
+                          </Text>
+                        </HStack>
+                      )}
+                    </Box>
+                    <Text color="gray.400" flexShrink={0} mt={1}>
+                      <AppIcon name="external" size={15} />
+                    </Text>
+                  </HStack>
+                  <Wrap spacing={1}>
+                    {buildTags(result).map((tag) => (
+                      <Badge
+                        key={tag}
+                        bg="gray.100"
+                        color="gray.700"
+                        fontWeight="medium"
+                        textTransform="none"
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </Wrap>
+                </VStack>
+              </HStack>
+            </Link>
+          </Box>
+        )
+      })}
     </Box>
   )
 }

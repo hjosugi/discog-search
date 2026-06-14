@@ -1,21 +1,38 @@
 import { useEffect, useState } from "react"
 import { useFetcher, useLoaderData, useSearchParams } from "@remix-run/react"
-import { discogsFetch } from "../utils/discogsAuthMiddleware"
 import {
+  DiscogsFetchError,
+  discogsFetch,
+} from "../utils/discogsAuthMiddleware"
+import {
+  Alert,
+  AlertDescription,
+  AlertIcon,
   Box,
-  Input,
   Button,
-  Spinner,
+  Grid,
   Heading,
-  VStack,
+  HStack,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  Spinner,
   Text,
 } from "@chakra-ui/react"
 
+import { AppIcon } from "../components/AppIcon"
 import { ResultList } from "../components/ResultList"
 import { SearchParam, SearchResult } from "../types"
+import { rankSearchResults } from "../utils/searchRanking"
 
 type SuggestionData = {
   suggestions: SearchResult[]
+}
+
+type LoaderData = {
+  results: SearchResult[]
+  isSearching: boolean
+  errorMessage?: string
 }
 
 type DiscogsSearchResponse = {
@@ -24,6 +41,7 @@ type DiscogsSearchResponse = {
     page: number
     pages: number
   }
+  rateLimited?: boolean
 }
 
 export async function loader({ request }: { request: Request }) {
@@ -38,44 +56,58 @@ export async function loader({ request }: { request: Request }) {
     return { results: [], isSearching: false }
   }
 
-  const params: SearchParam = {
-    q: q || null,
-    credit: credit || null,
-    genre: genre || null,
-    type: "master",
-    per_page: 100,
-    page: 1,
-  }
-  let searchResults = (await discogsFetch(
-    "database/search",
-    params
-  )) as DiscogsSearchResponse
-  let allResults = searchResults.results || []
-
-  const queryTokens = tokenize(q || artist)
-  const MAX = artist || credit || genre || queryTokens.length > 2 ? 3 : 1
-  while (
-    searchResults.pagination &&
-    searchResults.pagination.page < searchResults.pagination.pages &&
-    searchResults.pagination.page < MAX
-  ) {
-    params.page = searchResults.pagination.page + 1
-    searchResults = (await discogsFetch(
+  try {
+    const params: SearchParam = {
+      q: q || null,
+      credit: credit || null,
+      genre: genre || null,
+      type: "master",
+      per_page: 100,
+      page: 1,
+    }
+    let searchResults = await discogsFetch<DiscogsSearchResponse>(
       "database/search",
       params
-    )) as DiscogsSearchResponse
-    allResults = allResults.concat(searchResults.results || [])
-  }
+    )
+    let allResults = searchResults.results || []
 
-  const results = rankSearchResults(allResults, {
-    q,
-    artist,
-    genre,
-  })
+    const MAX = credit || genre ? 2 : 1
+    while (
+      searchResults.pagination &&
+      searchResults.pagination.page < searchResults.pagination.pages &&
+      searchResults.pagination.page < MAX
+    ) {
+      params.page = searchResults.pagination.page + 1
+      searchResults = await discogsFetch<DiscogsSearchResponse>(
+        "database/search",
+        params
+      )
+      allResults = allResults.concat(searchResults.results || [])
+    }
 
-  return {
-    results,
-    isSearching: false,
+    const results = rankSearchResults(allResults, {
+      q,
+      artist,
+      genre,
+    })
+
+    return {
+      results,
+      isSearching: false,
+      errorMessage: searchResults.rateLimited
+        ? "Discogs is cooling down after rate limiting. Cached results will be used when available."
+        : undefined,
+    }
+  } catch (error) {
+    if (!isExpectedDiscogsSearchError(error)) {
+      console.error("Failed to fetch Discogs search results:", error)
+    }
+
+    return {
+      results: [],
+      isSearching: false,
+      errorMessage: getSearchErrorMessage(error),
+    }
   }
 }
 
@@ -83,7 +115,8 @@ export default function SearchPage() {
   const {
     results,
     isSearching,
-  }: { results: SearchResult[]; isSearching: boolean } = useLoaderData()
+    errorMessage,
+  } = useLoaderData<LoaderData>()
   const [searchParams] = useSearchParams()
   const suggestionsFetcher = useFetcher<SuggestionData>()
 
@@ -97,18 +130,18 @@ export default function SearchPage() {
   const isSearchDisabled = !q && !credit && !genre
   const suggestions = suggestionsFetcher.data?.suggestions || []
   const showSuggestions =
-    isSuggestionOpen && q.trim().length >= 2 && suggestions.length > 0
+    isSuggestionOpen && q.trim().length >= 3 && suggestions.length > 0
 
   useEffect(() => {
     const query = q.trim()
-    if (query.length < 2) return
+    if (query.length < 3) return
 
     const timeout = window.setTimeout(() => {
       const params = new URLSearchParams({ q: query })
       if (credit) params.set("credit", credit)
       if (genre) params.set("genre", genre)
       suggestionsFetcher.load(`/search/suggestions?${params.toString()}`)
-    }, 250)
+    }, 600)
 
     return () => window.clearTimeout(timeout)
   }, [credit, genre, q, suggestionsFetcher])
@@ -131,28 +164,67 @@ export default function SearchPage() {
   }
 
   return (
-    <Box p={{ base: 4, md: 6 }} maxW="760px" mx="auto">
-      <Heading as="h1" size="md" mb={2}>
-        Discogs Performer Search
-      </Heading>
-      <Text fontSize="sm" color="gray.600" mb={4}>
-        Search loosely by track title and artist name together.
-      </Text>
+    <Box minH="100vh" bg="gray.50" px={{ base: 4, md: 6 }} py={{ base: 5, md: 8 }}>
+      <Box maxW="980px" mx="auto">
+        <HStack spacing={3} mb={5} align="center">
+          <Box
+            alignItems="center"
+            bg="black"
+            borderRadius="md"
+            color="white"
+            display="flex"
+            h="40px"
+            justifyContent="center"
+            w="40px"
+          >
+            <AppIcon name="disc" size={22} />
+          </Box>
+          <Box>
+            <Heading as="h1" size="md">
+              Discogs Credits Finder
+            </Heading>
+            <Text fontSize="sm" color="gray.600">
+              {results.length > 0 ? `${results.length} matches` : "Ready"}
+            </Text>
+          </Box>
+        </HStack>
 
-      <VStack as="form" onSubmit={handleSubmit} spacing={2} align="stretch">
-        <Box position="relative">
-          <Input
-            placeholder="Track or artist name, e.g. Thriller Michael Jackson"
-            value={q}
-            onChange={(event) => {
-              setQ(event.target.value)
-              setIsSuggestionOpen(true)
+        <Box
+          as="form"
+          onSubmit={handleSubmit}
+          bg="white"
+          borderWidth="1px"
+          borderColor="gray.200"
+          borderRadius="md"
+          p={{ base: 3, md: 4 }}
+          boxShadow="sm"
+        >
+          <Grid
+            gap={2}
+            templateColumns={{
+              base: "1fr",
+              md: "minmax(0, 1fr) minmax(180px, 220px) 140px",
+              lg: "minmax(0, 1fr) minmax(190px, 230px) minmax(150px, 180px) 140px",
             }}
-            onFocus={() => setIsSuggestionOpen(true)}
-            onBlur={() => setIsSuggestionOpen(false)}
-            size="sm"
-            autoComplete="off"
-          />
+          >
+            <Box position="relative" gridColumn={{ base: "auto", md: "1 / -1", lg: "auto" }}>
+              <InputGroup size="md">
+                <InputLeftElement color="gray.400">
+                  <AppIcon name="search" size={17} />
+                </InputLeftElement>
+                <Input
+                  placeholder="Track or artist, e.g. Thriller Michael Jackson"
+                  value={q}
+                  onChange={(event) => {
+                    setQ(event.target.value)
+                    setIsSuggestionOpen(true)
+                  }}
+                  onFocus={() => setIsSuggestionOpen(true)}
+                  onBlur={() => setIsSuggestionOpen(false)}
+                  autoComplete="off"
+                  bg="white"
+                />
+              </InputGroup>
           {showSuggestions && (
             <Box
               position="absolute"
@@ -173,185 +245,120 @@ export default function SearchPage() {
                   as="a"
                   href={buildSuggestionHref(suggestion)}
                   display="block"
-                  px={3}
+                  px={4}
                   py={2}
                   _hover={{ bg: "gray.50" }}
-                  onMouseDown={(event) => event.preventDefault()}
+                  onMouseDown={(event: React.MouseEvent) =>
+                    event.preventDefault()
+                  }
                 >
-                  <Text fontSize="sm" fontWeight="medium" noOfLines={1}>
-                    {suggestion.title}
-                  </Text>
-                  {suggestion.year && (
-                    <Text fontSize="xs" color="gray.500">
-                      {suggestion.year}
+                  <HStack spacing={2}>
+                    <Text color="gray.400">
+                      <AppIcon name="music" size={15} />
                     </Text>
-                  )}
+                    <Box minW={0}>
+                      <Text fontSize="sm" fontWeight="medium" noOfLines={1}>
+                        {suggestion.title}
+                      </Text>
+                      {suggestion.year && (
+                        <Text fontSize="xs" color="gray.500">
+                          {suggestion.year}
+                        </Text>
+                      )}
+                    </Box>
+                  </HStack>
                 </Box>
               ))}
             </Box>
           )}
+            </Box>
+            <InputGroup size="md" gridColumn={{ base: "auto", md: "1 / 2", lg: "auto" }}>
+              <InputLeftElement color="gray.400">
+                <AppIcon name="mic" size={17} />
+              </InputLeftElement>
+              <Input
+                placeholder="Role or credit"
+                value={credit}
+                onChange={(event) => setCredit(event.target.value)}
+                bg="white"
+              />
+            </InputGroup>
+            <InputGroup size="md" gridColumn={{ base: "auto", md: "2 / 3", lg: "auto" }}>
+              <InputLeftElement color="gray.400">
+                <AppIcon name="tag" size={16} />
+              </InputLeftElement>
+              <Input
+                placeholder="Genre"
+                value={genre}
+                onChange={(event) => setGenre(event.target.value)}
+                list="genre-suggestions"
+                bg="white"
+              />
+            </InputGroup>
+            <Button
+              colorScheme="blue"
+              type="submit"
+              isDisabled={isSearchDisabled}
+              leftIcon={<AppIcon name="search" size={16} />}
+              gridColumn={{ base: "auto", md: "3 / 4", lg: "auto" }}
+              h="40px"
+              px={4}
+              w="100%"
+              whiteSpace="nowrap"
+            >
+              Search
+            </Button>
+          </Grid>
+          <datalist id="genre-suggestions">
+            <option value="Jazz" />
+            <option value="Rock" />
+            <option value="Pop" />
+            <option value="Classical" />
+            <option value="Hip Hop" />
+            <option value="Electronic" />
+          </datalist>
         </Box>
-        <Input
-          placeholder="Credit name, e.g. Drums, Bass, Guitar"
-          value={credit}
-          onChange={(event) => setCredit(event.target.value)}
-          size="sm"
-        />
-        <Input
-          placeholder="Genre"
-          value={genre}
-          onChange={(event) => setGenre(event.target.value)}
-          size="sm"
-          list="genre-suggestions"
-        />
-        <datalist id="genre-suggestions">
-          <option value="Jazz" />
-          <option value="Rock" />
-          <option value="Pop" />
-          <option value="Classical" />
-          <option value="Hip Hop" />
-          <option value="Electronic" />
-        </datalist>
-        <Button
-          colorScheme="blue"
-          type="submit"
-          isDisabled={isSearchDisabled}
-          size="sm"
-        >
-          Search
-        </Button>
-      </VStack>
 
-      <Box mt={4} maxH="400px" overflowY="auto">
-        {isSearching ? (
-          <Spinner size="md" mt={4} />
-        ) : (
-          <>
-            {results.length > 0 && (
-              <Text fontSize="sm" color="gray.600" mb={2}>
-                {results.length} results
-              </Text>
-            )}
-            <ResultList results={results} searchParams={{ q, credit, genre }} />
-          </>
-        )}
+        <Box mt={4}>
+          {isSearching ? (
+            <HStack color="gray.600" py={8} justify="center">
+              <Spinner size="md" />
+              <Text fontSize="sm">Searching</Text>
+            </HStack>
+          ) : (
+            <>
+              {errorMessage && (
+                <Alert status="warning" mb={3} borderRadius="md">
+                  <AlertIcon />
+                  <AlertDescription>{errorMessage}</AlertDescription>
+                </Alert>
+              )}
+              <ResultList results={results} searchParams={{ q, credit, genre }} />
+            </>
+          )}
+        </Box>
       </Box>
     </Box>
   )
 }
 
-function rankSearchResults(
-  results: SearchResult[],
-  filters: {
-    q: string
-    artist: string
-    genre: string
+function getSearchErrorMessage(error: unknown) {
+  if (error instanceof DiscogsFetchError) {
+    if (error.status === 401 || error.status === 403) {
+      return "Discogs rejected the request. Check DISCOGS_TOKEN, or DISCOGS_API_KEY and DISCOGS_API_SECRET, then restart the dev server."
+    }
+    if (error.status === 429) {
+      return "Discogs rate limit was reached. Please wait a moment and search again."
+    }
+    return error.message
   }
-) {
-  return dedupeResults(results)
-    .map((result) => ({
-      result,
-      score: scoreResult(result, filters),
-    }))
-    .filter(({ score }) => score > -30)
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score
-      return getYearValue(b.result.year) - getYearValue(a.result.year)
-    })
-    .map(({ result }) => result)
+
+  return "Could not fetch Discogs search results. Please try again."
 }
 
-function dedupeResults(results: SearchResult[]) {
-  const seen = new Set<string>()
-
-  return results.filter((result) => {
-    const key = [
-      normalizeForSearch(result.title),
-      result.year || "",
-      result.country || "",
-    ].join("|")
-
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
-}
-
-function scoreResult(
-  result: SearchResult,
-  filters: {
-    q: string
-    artist: string
-    genre: string
-  }
-) {
-  const normalizedTitle = normalizeForSearch(result.title)
-  const normalizedQuery = normalizeForSearch(filters.q || filters.artist)
-  const queryTokens = tokenize(filters.q || filters.artist)
-  const genreTokens = tokenize(filters.genre)
-  const metadata = normalizeForSearch(
-    [
-      result.artist,
-      result.country,
-      result.format?.join(" "),
-      result.label?.join(" "),
-      result.genre?.join(" "),
-      result.style?.join(" "),
-      result.catno,
-    ]
-      .filter(Boolean)
-      .join(" ")
+function isExpectedDiscogsSearchError(error: unknown) {
+  return (
+    error instanceof DiscogsFetchError &&
+    (error.status === 401 || error.status === 403 || error.status === 429)
   )
-  const searchableText = `${normalizedTitle} ${metadata}`.trim()
-  let score = 0
-
-  if (normalizedQuery) {
-    if (normalizedTitle === normalizedQuery) score += 80
-    if (normalizedTitle.includes(normalizedQuery)) score += 40
-    if (normalizedTitle.startsWith(normalizedQuery)) score += 20
-
-    const matchedTokens = queryTokens.filter((token) =>
-      searchableText.includes(token)
-    )
-    score += matchedTokens.length * 12
-    score -= (queryTokens.length - matchedTokens.length) * 18
-  }
-
-  if (genreTokens.length > 0) {
-    const genreText = normalizeForSearch(
-      [result.genre?.join(" "), result.style?.join(" ")].filter(Boolean).join(" ")
-    )
-    const matchedGenreTokens = genreTokens.filter((token) =>
-      genreText.includes(token)
-    )
-    score += matchedGenreTokens.length * 18
-    score -= (genreTokens.length - matchedGenreTokens.length) * 10
-  }
-
-  if (result.type === "master") score += 8
-  if (result.thumb) score += 4
-  if (result.year) score += 3
-  if (result.format?.some((format) => /album|lp|cd/i.test(format))) score += 3
-  if (/various artists/i.test(result.title)) score -= 12
-
-  return score
-}
-
-function tokenize(value: string) {
-  return normalizeForSearch(value)
-    .split(" ")
-    .filter((token) => token.length > 1)
-}
-
-function normalizeForSearch(value = "") {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-function getYearValue(year?: string) {
-  const value = Number(year)
-  return Number.isFinite(value) ? value : 0
 }

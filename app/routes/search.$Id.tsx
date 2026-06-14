@@ -16,6 +16,7 @@ import {
   Wrap,
   WrapItem,
 } from "@chakra-ui/react"
+import { AppIcon } from "~/components/AppIcon"
 import { discogsFetch } from "~/utils/discogsAuthMiddleware"
 import {
   DiscogsMaster,
@@ -136,7 +137,8 @@ export default function AlbumView() {
   const coverImage = getCoverImage(release, master) || undefined
 
   return (
-    <Box p={{ base: 4, md: 6 }} maxW="1040px" mx="auto">
+    <Box minH="100vh" bg="gray.50" px={{ base: 4, md: 6 }} py={{ base: 5, md: 8 }}>
+      <Box maxW="1040px" mx="auto">
       <Stack
         direction={{ base: "column", md: "row" }}
         spacing={{ base: 4, md: 6 }}
@@ -154,11 +156,16 @@ export default function AlbumView() {
           <Box boxSize={{ base: "150px", md: "190px" }} bg="gray.100" />
         )}
 
-        <VStack align="stretch" spacing={3} flex="1">
+        <VStack align="stretch" spacing={4} flex="1">
           <Box>
-            <Heading as="h1" size={{ base: "md", md: "lg" }}>
-              {release.title}
-            </Heading>
+            <HStack align="center" spacing={2} mb={1}>
+              <Text color="gray.500">
+                <AppIcon name="disc" size={18} />
+              </Text>
+              <Heading as="h1" size={{ base: "md", md: "lg" }}>
+                {release.title}
+              </Heading>
+            </HStack>
             <Text color="gray.600" fontSize="sm">
               {artistName}
               {release.year ? ` / ${release.year}` : ""}
@@ -166,11 +173,17 @@ export default function AlbumView() {
           </Box>
 
           {selectedTrack && (
-            <Box bg="gray.50" borderRadius="md" p={3}>
-              <Text fontSize="xs" color="gray.600" mb={1}>
-                Selected Track
-              </Text>
-              <HStack justify="space-between" align="start">
+            <Box bg="white" borderRadius="md" borderWidth="1px" borderColor="gray.200" p={3}>
+              <HStack color="gray.600" fontSize="xs" mb={1} spacing={1}>
+                <AppIcon name="music" size={14} />
+                <Text>Selected Track</Text>
+              </HStack>
+              <HStack
+                justify="space-between"
+                align="start"
+                flexWrap="wrap"
+                gap={2}
+              >
                 <Box>
                   <Heading as="h2" size="md">
                     {selectedTrack.title}
@@ -180,7 +193,7 @@ export default function AlbumView() {
                     {selectedTrack.duration ? ` / ${selectedTrack.duration}` : ""}
                   </Text>
                 </Box>
-                <Badge colorScheme="blue">{performanceCredits.length} players</Badge>
+                <Badge colorScheme="blue">{performanceCredits.length} performers</Badge>
               </HStack>
             </Box>
           )}
@@ -194,6 +207,7 @@ export default function AlbumView() {
                   target="_blank"
                   rel="noreferrer"
                   colorScheme={service.colorScheme}
+                  leftIcon={<AppIcon name="music" size={15} />}
                   size="sm"
                 >
                   {service.label}
@@ -208,6 +222,7 @@ export default function AlbumView() {
                   target="_blank"
                   rel="noreferrer"
                   variant="outline"
+                  leftIcon={<AppIcon name="external" size={15} />}
                   size="sm"
                 >
                   Discogs
@@ -218,17 +233,17 @@ export default function AlbumView() {
         </VStack>
       </Stack>
 
-      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5} mt={6}>
-        <Box>
-          <SectionTitle>Personnel</SectionTitle>
+      <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={5} mt={6}>
+        <Box bg="white" borderWidth="1px" borderColor="gray.200" borderRadius="md" p={4}>
+          <SectionTitle>Performers</SectionTitle>
           <CreditList
             credits={performanceCredits}
-            emptyText="No performance credits were found for this track."
+            emptyText="No performer credits were found for this track."
           />
 
           {otherCredits.length > 0 && (
             <Box mt={5}>
-              <SectionTitle>Other Credits</SectionTitle>
+              <SectionTitle>Credits</SectionTitle>
               <CreditList credits={otherCredits} />
             </Box>
           )}
@@ -254,7 +269,7 @@ export default function AlbumView() {
           )}
         </Box>
 
-        <Box>
+        <Box bg="white" borderWidth="1px" borderColor="gray.200" borderRadius="md" p={4}>
           <SectionTitle>Tracks</SectionTitle>
           <VStack align="stretch" spacing={1} maxH="58vh" overflowY="auto">
             {tracks.map((track) => {
@@ -300,19 +315,26 @@ export default function AlbumView() {
       <Button
         as={RemixLink}
         to={`/search${backQuery ? `?${backQuery}` : ""}`}
+        leftIcon={<AppIcon name="arrowLeft" size={15} />}
         variant="link"
       >
         Back to List
       </Button>
+      </Box>
     </Box>
   )
 }
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <Heading as="h2" size="sm" mb={3}>
-      {children}
-    </Heading>
+    <HStack spacing={2} mb={3}>
+      <Text color="blue.600">
+        <AppIcon name="spark" size={15} />
+      </Text>
+      <Heading as="h2" size="sm">
+        {children}
+      </Heading>
+    </HStack>
   )
 }
 
@@ -340,15 +362,24 @@ function CreditList({
           borderWidth="1px"
           borderColor="gray.200"
           borderRadius="md"
+          bg="gray.50"
         >
           <HStack justify="space-between" align="start" spacing={3}>
-            <Box>
-              <Text fontWeight="bold">{credit.name}</Text>
-              <Text fontSize="sm" color="gray.700">
-                {credit.role}
+            <HStack align="start" spacing={2}>
+              <Text color="gray.500" mt="2px">
+                <AppIcon name="user" size={15} />
               </Text>
-            </Box>
-            <Badge colorScheme={credit.source === "track" ? "green" : "gray"}>
+              <Box>
+                <Text fontWeight="bold">{credit.name}</Text>
+                <Text fontSize="sm" color="gray.700">
+                  {credit.role}
+                </Text>
+              </Box>
+            </HStack>
+            <Badge
+              colorScheme={credit.source === "track" ? "green" : "gray"}
+              textTransform="none"
+            >
               {credit.source === "track" ? "track" : credit.isGlobal ? "album" : "range"}
             </Badge>
           </HStack>
