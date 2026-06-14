@@ -8,17 +8,8 @@ export async function discogsFetch(
 
   const url = new URL(API_URL)
 
-  // クエリパラメータがあれば追加
   Object.entries(params).forEach(([key, value]) => {
-<<<<<<< HEAD
     if (value !== undefined && value !== null && value !== "") {
-||||||| e3e4796
-  Object.keys(params).forEach((key) =>
-    url.searchParams.append(key, params[key])
-  )
-=======
-    if (value !== null && value !== undefined && value !== "") {
->>>>>>> origin/codex/add-musician-information-feature
       url.searchParams.append(key, String(value))
     }
   })
@@ -31,7 +22,7 @@ export async function discogsFetch(
   })
 
   if (!response.ok) {
-    throw new Error(`Discogs APIリクエストエラー: ${response.statusText}`)
+    throw new Error(`Discogs API request error: ${response.statusText}`)
   }
 
   return response.json()

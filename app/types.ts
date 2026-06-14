@@ -23,23 +23,6 @@ export interface DiscogsVideo {
   description?: string
   duration?: number
   embed?: boolean
-export interface AlbumArtist {
-  id?: number
-  name: string
-}
-
-export interface AlbumImage {
-  uri: string
-}
-
-export interface DiscogsMaster {
-  id: number
-  title: string
-  artists?: AlbumArtist[]
-  images?: AlbumImage[]
-  year?: number
-  tracklist?: TrackItem[]
-  extraartists?: ExtraArtist[]
 }
 
 export interface Album {
@@ -54,21 +37,23 @@ export interface TrackItem {
   position: string
   type_: string
   title: string
-  duration: string
+  duration?: string
   extraartists?: ExtraArtist[]
 }
 
 export interface ExtraArtist {
   name: string
-  anv: string
-  join: string
   role: string
-  tracks: string
-  id: number
-  resource_url: string
+  anv?: string
+  join?: string
+  tracks?: string
+  id?: number
+  resource_url?: string
+  thumbnail_url?: string
 }
 
-export interface SearchParam extends Record<string, string | number | null | undefined> {
+export interface SearchParam
+  extends Record<string, string | number | null | undefined> {
   page: number
   q?: string | null
   artist?: string | null
