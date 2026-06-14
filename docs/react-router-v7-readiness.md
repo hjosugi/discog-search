@@ -1,36 +1,30 @@
-# React Router v7 Readiness
+# React Router v7 Migration
 
 ## Done
 
-- Remix is on the Vite plugin path via `remix vite:dev` and `remix vite:build`.
+- The app now runs on React Router v7 Framework Mode.
+- Scripts use `react-router dev`, `react-router build`, and
+  `react-router-serve`.
+- The Vite plugin is `reactRouter()` from `@react-router/dev/vite`.
 - `engines.node` requires Node 20 or newer.
-- `tsconfig.json` uses `moduleResolution: "Bundler"` and includes `vite/client`.
-- Non-breaking v7 preparation flags are enabled:
-  - `v3_fetcherPersist`
-  - `v3_lazyRouteDiscovery`
-  - `v3_relativeSplatPath`
-  - `v3_routeConfig`
-  - `v3_singleFetch`
-  - `v3_throwAbortReason`
+- `tsconfig.json` uses `moduleResolution: "Bundler"`, includes
+  `.react-router/types/**/*`, and runs `react-router typegen` before `tsc`.
 - `app/routes.ts` defines the current routes with the v7-style config route
-  shape via `@remix-run/route-config`.
-- Touched loaders return plain data objects instead of the deprecated Remix
-  `json()` helper.
+  shape via `@react-router/dev/routes`.
+- Entry files use `HydratedRouter` and `ServerRouter`.
+- Route/component imports now come from `react-router` instead of
+  `@remix-run/*`.
+- Loaders return plain data objects instead of the deprecated Remix `json()`
+  helper.
 - Search and detail error handling no longer turns expected Discogs failures
   into full application stack traces.
 
 ## Deferred
 
-The final React Router v7 Framework Mode migration should include:
-
-- replacing Remix package imports with React Router package imports,
-- updating scripts and server entrypoints to the React Router equivalents,
-- replacing `@remix-run/route-config` imports in `app/routes.ts` with
-  `@react-router/dev/routes`,
-- adding `react-router.config.ts` if deployment/runtime config needs to move
-  out of Remix conventions,
-- rerunning smoke tests for search, suggestions, detail pages, favicon, and
-  error boundaries.
+- The build currently emits React Router v8 future flag warnings. Those should
+  be evaluated separately because they opt into behavior for the next major.
+- Browser smoke testing against a running local server is still useful for
+  search, suggestions, detail pages, favicon, and error boundaries.
 
 ## References
 

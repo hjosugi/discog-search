@@ -9,6 +9,7 @@ The UI uses three inputs:
 - `credit`: a performer, sideman, producer, arranger, or other Discogs credit.
 - `song`: a track title.
 - `genre`: an optional broad Discogs genre filter.
+- `role`: an optional local instrument/role filter such as `drums` or `bass`.
 
 The URL uses `credit` as the primary query parameter. Older `person` links are
 still accepted as a fallback so existing links keep working.
@@ -22,6 +23,10 @@ search is implemented through Discogs database search filters:
 - `track=<title>` for track title matching.
 - `genre=<genre>` for genre filtering.
 - `type=release` when `credit` or `song` is present.
+
+The `role` field is not sent to Discogs search because the public search API
+does not provide a reliable instrument-role filter. It is carried through the
+URL and applied on the detail page against `extraartists.role`.
 
 Discogs' public data model is release-oriented. The search API can filter by
 `credit`, but it does not answer "who played drums on this exact track?" in one
@@ -71,6 +76,11 @@ Search results can link to either a release or a master. Release results carry
 Release-level credits may include a `tracks` range. The detail page checks that
 range before showing the credit for a selected track.
 
+The detail page can also filter performer credits by `role`. This is a local
+filter over the loaded release metadata, so role chips like `drums`, `bass`,
+and `guitar` refine what is shown without changing the upstream Discogs search
+request.
+
 ## Discogs Fetch Layer
 
 `app/utils/discogsAuthMiddleware.ts` wraps Discogs API calls. It handles:
@@ -85,18 +95,16 @@ range before showing the credit for a selected track.
 This keeps API failures from becoming Remix application errors and reduces
 repeat calls during typing and navigation.
 
-## React Router v7 Readiness
+## React Router v7
 
-The app still runs on Remix v2, but it is being prepared for React Router v7
-Framework Mode. The important compatibility work is:
+The app runs on React Router v7 Framework Mode. The important framework pieces
+are:
 
-- Vite-based Remix build is already in use.
+- `react-router dev` and `react-router build` scripts.
+- `reactRouter()` in `vite.config.ts`.
+- `app/routes.ts` config routes via `@react-router/dev/routes`.
+- `react-router.config.ts` for framework config.
+- `HydratedRouter` and `ServerRouter` in the entry files.
 - Node 20+ is required.
-- TypeScript uses bundler module resolution.
-- `app/routes.ts` is present and `v3_routeConfig` is enabled, so the app no
-  longer depends on Remix's implicit file-route discovery.
-- `v3_singleFetch` and `v3_lazyRouteDiscovery` are enabled.
-- Deprecated `json()` loader helper usage is removed from touched routes.
-
-Full package/import migration from `@remix-run/*` to React Router packages is a
-separate step.
+- TypeScript uses bundler module resolution and generated React Router route
+  types.
