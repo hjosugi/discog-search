@@ -33,14 +33,6 @@ export interface Album {
   year?: number
 }
 
-export interface TrackItem {
-  position: string
-  type_: string
-  title: string
-  duration?: string
-  extraartists?: ExtraArtist[]
-}
-
 export interface ExtraArtist {
   name: string
   role: string
@@ -52,14 +44,23 @@ export interface ExtraArtist {
   thumbnail_url?: string
 }
 
+export interface TrackItem {
+  position: string
+  type_: string
+  title: string
+  duration?: string
+  extraartists?: ExtraArtist[]
+}
+
 export interface SearchParam
   extends Record<string, string | number | null | undefined> {
   page: number
   q?: string | null
   artist?: string | null
   credit?: string | null
+  track?: string | null
   genre?: string | null
-  type: "master"
+  type: "master" | "release"
   per_page: number
 }
 
@@ -78,6 +79,7 @@ export interface DiscogsMaster {
 export interface DiscogsRelease extends DiscogsMaster {
   videos?: DiscogsVideo[]
   artists_sort?: string
+  master_id?: number
 }
 
 export interface SearchResult {

@@ -1,9 +1,5 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type FormEvent, type MouseEvent } from "react"
 import { useFetcher, useLoaderData, useSearchParams } from "@remix-run/react"
-import {
-  DiscogsFetchError,
-  discogsFetch,
-} from "../utils/discogsAuthMiddleware"
 import {
   Alert,
   AlertDescription,
@@ -22,7 +18,11 @@ import {
 
 import { AppIcon } from "../components/AppIcon"
 import { ResultList } from "../components/ResultList"
-import { SearchParam, SearchResult } from "../types"
+import { SearchResult } from "../types"
+import { searchDiscogsAlbums } from "../utils/discogsSearch"
+import {
+  DiscogsFetchError,
+} from "../utils/discogsAuthMiddleware"
 import { rankSearchResults } from "../utils/searchRanking"
 
 type SuggestionData = {
@@ -35,59 +35,34 @@ type LoaderData = {
   errorMessage?: string
 }
 
-type DiscogsSearchResponse = {
-  results?: SearchResult[]
-  pagination?: {
-    page: number
-    pages: number
-  }
-  rateLimited?: boolean
-}
-
 export async function loader({ request }: { request: Request }) {
   const url = new URL(request.url)
-
-  const q = (url.searchParams.get("q") || url.searchParams.get("artist") || "").trim()
-  const artist = (url.searchParams.get("artist") || "").trim()
-  const credit = (url.searchParams.get("credit") || "").trim()
+  const credit = (
+    url.searchParams.get("credit") ||
+    url.searchParams.get("person") ||
+    ""
+  ).trim()
+  const song = (
+    url.searchParams.get("song") ||
+    url.searchParams.get("q") ||
+    url.searchParams.get("artist") ||
+    ""
+  ).trim()
   const genre = (url.searchParams.get("genre") || "").trim()
 
-  if (!q && !artist && !credit && !genre) {
+  if (!credit && !song && !genre) {
     return { results: [], isSearching: false }
   }
 
   try {
-    const params: SearchParam = {
-      q: q || null,
-      credit: credit || null,
-      genre: genre || null,
-      type: "master",
-      per_page: 100,
-      page: 1,
-    }
-    let searchResults = await discogsFetch<DiscogsSearchResponse>(
-      "database/search",
-      params
-    )
-    let allResults = searchResults.results || []
-
-    const MAX = credit || genre ? 2 : 1
-    while (
-      searchResults.pagination &&
-      searchResults.pagination.page < searchResults.pagination.pages &&
-      searchResults.pagination.page < MAX
-    ) {
-      params.page = searchResults.pagination.page + 1
-      searchResults = await discogsFetch<DiscogsSearchResponse>(
-        "database/search",
-        params
-      )
-      allResults = allResults.concat(searchResults.results || [])
-    }
-
-    const results = rankSearchResults(allResults, {
-      q,
-      artist,
+    const searchResults = await searchDiscogsAlbums({
+      credit,
+      song,
+      genre,
+    })
+    const results = rankSearchResults(searchResults.results, {
+      credit,
+      song,
       genre,
     })
 
@@ -112,59 +87,63 @@ export async function loader({ request }: { request: Request }) {
 }
 
 export default function SearchPage() {
-  const {
-    results,
-    isSearching,
-    errorMessage,
-  } = useLoaderData<LoaderData>()
+  const { results, isSearching, errorMessage } = useLoaderData<LoaderData>()
   const [searchParams] = useSearchParams()
   const suggestionsFetcher = useFetcher<SuggestionData>()
 
-  const [q, setQ] = useState(
-    () => searchParams.get("q") || searchParams.get("artist") || ""
+  const [credit, setCredit] = useState(
+    () => searchParams.get("credit") || searchParams.get("person") || ""
   )
-  const [credit, setCredit] = useState(() => searchParams.get("credit") || "")
+  const [song, setSong] = useState(
+    () => searchParams.get("song") || searchParams.get("q") || ""
+  )
   const [genre, setGenre] = useState(() => searchParams.get("genre") || "")
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false)
 
-  const isSearchDisabled = !q && !credit && !genre
+  const isSearchDisabled = !credit && !song && !genre
   const suggestions = suggestionsFetcher.data?.suggestions || []
   const showSuggestions =
-    isSuggestionOpen && q.trim().length >= 3 && suggestions.length > 0
+    isSuggestionOpen && song.trim().length >= 3 && suggestions.length > 0
 
   useEffect(() => {
-    const query = q.trim()
+    const query = song.trim()
     if (query.length < 3) return
 
     const timeout = window.setTimeout(() => {
-      const params = new URLSearchParams({ q: query })
+      const params = new URLSearchParams({ song: query })
       if (credit) params.set("credit", credit)
       if (genre) params.set("genre", genre)
       suggestionsFetcher.load(`/search/suggestions?${params.toString()}`)
     }, 600)
 
     return () => window.clearTimeout(timeout)
-  }, [credit, genre, q, suggestionsFetcher])
+  }, [credit, genre, song, suggestionsFetcher])
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     const params = new URLSearchParams()
-    if (q) params.append("q", q)
     if (credit) params.append("credit", credit)
+    if (song) params.append("song", song)
     if (genre) params.append("genre", genre)
     window.location.search = params.toString()
   }
 
   const buildSuggestionHref = (suggestion: SearchResult) => {
     const params = new URLSearchParams()
-    params.set("q", suggestion.title)
+    params.set("song", song || suggestion.title)
     if (credit) params.set("credit", credit)
     if (genre) params.set("genre", genre)
+    if (suggestion.type === "release") params.set("kind", "release")
     return `/search/${suggestion.id}?${params.toString()}`
   }
 
   return (
-    <Box minH="100vh" bg="gray.50" px={{ base: 4, md: 6 }} py={{ base: 5, md: 8 }}>
+    <Box
+      minH="100vh"
+      bg="gray.50"
+      px={{ base: 4, md: 6 }}
+      py={{ base: 5, md: 8 }}
+    >
       <Box maxW="980px" mx="auto">
         <HStack spacing={3} mb={5} align="center">
           <Box
@@ -181,10 +160,10 @@ export default function SearchPage() {
           </Box>
           <Box>
             <Heading as="h1" size="md">
-              Discogs Credits Finder
+              Sideman Album Finder
             </Heading>
             <Text fontSize="sm" color="gray.600">
-              {results.length > 0 ? `${results.length} matches` : "Ready"}
+              {results.length > 0 ? `${results.length} albums` : "Search by player"}
             </Text>
           </Box>
         </HStack>
@@ -207,16 +186,34 @@ export default function SearchPage() {
               lg: "minmax(0, 1fr) minmax(190px, 230px) minmax(150px, 180px) 140px",
             }}
           >
-            <Box position="relative" gridColumn={{ base: "auto", md: "1 / -1", lg: "auto" }}>
+            <InputGroup
+              size="md"
+              gridColumn={{ base: "auto", md: "1 / -1", lg: "auto" }}
+            >
+              <InputLeftElement color="gray.400">
+                <AppIcon name="user" size={17} />
+              </InputLeftElement>
+              <Input
+                placeholder="Credit / performer, e.g. Tony Williams"
+                value={credit}
+                onChange={(event) => setCredit(event.target.value)}
+                bg="white"
+              />
+            </InputGroup>
+
+            <Box
+              position="relative"
+              gridColumn={{ base: "auto", md: "1 / 2", lg: "auto" }}
+            >
               <InputGroup size="md">
                 <InputLeftElement color="gray.400">
-                  <AppIcon name="search" size={17} />
+                  <AppIcon name="music" size={17} />
                 </InputLeftElement>
                 <Input
-                  placeholder="Track or artist, e.g. Thriller Michael Jackson"
-                  value={q}
+                  placeholder="Song / track, e.g. Night in Tunisia"
+                  value={song}
                   onChange={(event) => {
-                    setQ(event.target.value)
+                    setSong(event.target.value)
                     setIsSuggestionOpen(true)
                   }}
                   onFocus={() => setIsSuggestionOpen(true)}
@@ -225,65 +222,57 @@ export default function SearchPage() {
                   bg="white"
                 />
               </InputGroup>
-          {showSuggestions && (
-            <Box
-              position="absolute"
-              zIndex={10}
-              top="calc(100% + 4px)"
-              left={0}
-              right={0}
-              bg="white"
-              borderWidth="1px"
-              borderColor="gray.200"
-              borderRadius="md"
-              boxShadow="md"
-              overflow="hidden"
-            >
-              {suggestions.map((suggestion) => (
+
+              {showSuggestions && (
                 <Box
-                  key={suggestion.id}
-                  as="a"
-                  href={buildSuggestionHref(suggestion)}
-                  display="block"
-                  px={4}
-                  py={2}
-                  _hover={{ bg: "gray.50" }}
-                  onMouseDown={(event: React.MouseEvent) =>
-                    event.preventDefault()
-                  }
+                  position="absolute"
+                  zIndex={10}
+                  top="calc(100% + 4px)"
+                  left={0}
+                  right={0}
+                  bg="white"
+                  borderWidth="1px"
+                  borderColor="gray.200"
+                  borderRadius="md"
+                  boxShadow="md"
+                  overflow="hidden"
                 >
-                  <HStack spacing={2}>
-                    <Text color="gray.400">
-                      <AppIcon name="music" size={15} />
-                    </Text>
-                    <Box minW={0}>
-                      <Text fontSize="sm" fontWeight="medium" noOfLines={1}>
-                        {suggestion.title}
-                      </Text>
-                      {suggestion.year && (
-                        <Text fontSize="xs" color="gray.500">
-                          {suggestion.year}
+                  {suggestions.map((suggestion) => (
+                    <Box
+                      key={suggestion.id}
+                      as="a"
+                      href={buildSuggestionHref(suggestion)}
+                      display="block"
+                      px={4}
+                      py={2}
+                      _hover={{ bg: "gray.50" }}
+                      onMouseDown={(event: MouseEvent) => event.preventDefault()}
+                    >
+                      <HStack spacing={2}>
+                        <Text color="gray.400">
+                          <AppIcon name="music" size={15} />
                         </Text>
-                      )}
+                        <Box minW={0}>
+                          <Text fontSize="sm" fontWeight="medium" noOfLines={1}>
+                            {suggestion.title}
+                          </Text>
+                          {suggestion.year && (
+                            <Text fontSize="xs" color="gray.500">
+                              {suggestion.year}
+                            </Text>
+                          )}
+                        </Box>
+                      </HStack>
                     </Box>
-                  </HStack>
+                  ))}
                 </Box>
-              ))}
+              )}
             </Box>
-          )}
-            </Box>
-            <InputGroup size="md" gridColumn={{ base: "auto", md: "1 / 2", lg: "auto" }}>
-              <InputLeftElement color="gray.400">
-                <AppIcon name="mic" size={17} />
-              </InputLeftElement>
-              <Input
-                placeholder="Role or credit"
-                value={credit}
-                onChange={(event) => setCredit(event.target.value)}
-                bg="white"
-              />
-            </InputGroup>
-            <InputGroup size="md" gridColumn={{ base: "auto", md: "2 / 3", lg: "auto" }}>
+
+            <InputGroup
+              size="md"
+              gridColumn={{ base: "auto", md: "2 / 3", lg: "auto" }}
+            >
               <InputLeftElement color="gray.400">
                 <AppIcon name="tag" size={16} />
               </InputLeftElement>
@@ -295,6 +284,7 @@ export default function SearchPage() {
                 bg="white"
               />
             </InputGroup>
+
             <Button
               colorScheme="blue"
               type="submit"
@@ -309,6 +299,7 @@ export default function SearchPage() {
               Search
             </Button>
           </Grid>
+
           <datalist id="genre-suggestions">
             <option value="Jazz" />
             <option value="Rock" />
@@ -333,7 +324,7 @@ export default function SearchPage() {
                   <AlertDescription>{errorMessage}</AlertDescription>
                 </Alert>
               )}
-              <ResultList results={results} searchParams={{ q, credit, genre }} />
+              <ResultList results={results} searchParams={{ credit, song, genre }} />
             </>
           )}
         </Box>

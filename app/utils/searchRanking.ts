@@ -3,8 +3,8 @@ import { SearchResult } from "../types"
 export function rankSearchResults(
   results: SearchResult[],
   filters: {
-    q: string
-    artist: string
+    credit: string
+    song: string
     genre: string
   }
 ) {
@@ -40,14 +40,15 @@ function dedupeResults(results: SearchResult[]) {
 function scoreResult(
   result: SearchResult,
   filters: {
-    q: string
-    artist: string
+    credit: string
+    song: string
     genre: string
   }
 ) {
   const normalizedTitle = normalizeForSearch(result.title)
-  const normalizedQuery = normalizeForSearch(filters.q || filters.artist)
-  const queryTokens = tokenize(filters.q || filters.artist)
+  const normalizedQuery = normalizeForSearch(filters.song)
+  const queryTokens = tokenize(filters.song)
+  const creditTokens = tokenize(filters.credit)
   const genreTokens = tokenize(filters.genre)
   const metadata = normalizeForSearch(
     [
@@ -75,6 +76,13 @@ function scoreResult(
     )
     score += matchedTokens.length * 12
     score -= (queryTokens.length - matchedTokens.length) * 18
+  }
+
+  if (creditTokens.length > 0) {
+    const matchedCreditTokens = creditTokens.filter((token) =>
+      searchableText.includes(token)
+    )
+    score += matchedCreditTokens.length * 4
   }
 
   if (genreTokens.length > 0) {

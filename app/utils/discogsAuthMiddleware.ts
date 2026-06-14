@@ -10,6 +10,7 @@ export class DiscogsFetchError extends Error {
 
 const CACHE_TTL_MS = 10 * 60 * 1000
 const RATE_LIMIT_FALLBACK_MS = 30 * 1000
+
 const responseCache = new Map<
   string,
   {
@@ -24,12 +25,8 @@ export async function discogsFetch<T = unknown>(
   endpoint: string,
   params: Record<string, string | number | null | undefined> = {}
 ): Promise<T> {
-  const API_URL = `https://api.discogs.com/${endpoint}`
-  const DISCOGS_TOKEN = process.env.DISCOGS_TOKEN
-  const DISCOGS_API_KEY = process.env.DISCOGS_API_KEY
-  const DISCOGS_API_SECRET = process.env.DISCOGS_API_SECRET
-
-  const url = new URL(API_URL)
+  const apiUrl = `https://api.discogs.com/${endpoint}`
+  const url = new URL(apiUrl)
 
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
@@ -46,29 +43,19 @@ export async function discogsFetch<T = unknown>(
   if (cached && cached.expiresAt > Date.now()) {
     return cached.value as T
   }
+  if (cached) {
+    responseCache.delete(cacheKey)
+  }
 
   const pendingRequest = pendingRequests.get(cacheKey)
   if (pendingRequest) {
     return pendingRequest as Promise<T>
   }
 
-  const headers = new Headers({
-    "User-Agent": "discog-search/0.1",
-  })
-
-  if (DISCOGS_TOKEN) {
-    headers.set("Authorization", `Discogs token=${DISCOGS_TOKEN}`)
-  } else if (DISCOGS_API_KEY && DISCOGS_API_SECRET) {
-    headers.set(
-      "Authorization",
-      `Discogs key=${DISCOGS_API_KEY}, secret=${DISCOGS_API_SECRET}`
-    )
-  }
-
-  const request = fetch(url.toString(), { headers })
+  const request = fetch(url.toString(), { headers: getDiscogsHeaders() })
     .then(async (response) => {
       if (!response.ok) {
-        const details = await response.text()
+        const details = await response.text().catch(() => "")
         const message = [
           `Discogs API request error (${response.status})`,
           response.statusText,
@@ -102,6 +89,23 @@ export async function discogsFetch<T = unknown>(
 
   pendingRequests.set(cacheKey, request)
   return request as Promise<T>
+}
+
+function getDiscogsHeaders() {
+  const headers = new Headers({
+    "User-Agent": "discog-search/0.1",
+  })
+  const token = process.env.DISCOGS_TOKEN
+  const key = process.env.DISCOGS_API_KEY
+  const secret = process.env.DISCOGS_API_SECRET
+
+  if (token) {
+    headers.set("Authorization", `Discogs token=${token}`)
+  } else if (key && secret) {
+    headers.set("Authorization", `Discogs key=${key}, secret=${secret}`)
+  }
+
+  return headers
 }
 
 function getRateLimitedResponse() {

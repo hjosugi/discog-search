@@ -1,9 +1,12 @@
-import { json } from "@remix-run/node"
 import {
   DiscogsFetchError,
   discogsFetch,
 } from "../utils/discogsAuthMiddleware"
 import { SearchParam, SearchResult } from "../types"
+
+type SuggestionData = {
+  suggestions: SearchResult[]
+}
 
 type DiscogsSearchResponse = {
   results?: SearchResult[]
@@ -12,19 +15,24 @@ type DiscogsSearchResponse = {
 
 export async function loader({ request }: { request: Request }) {
   const url = new URL(request.url)
-  const q = (url.searchParams.get("q") || "").trim()
-  const credit = (url.searchParams.get("credit") || "").trim()
+  const song = (url.searchParams.get("song") || url.searchParams.get("q") || "").trim()
+  const credit = (
+    url.searchParams.get("credit") ||
+    url.searchParams.get("person") ||
+    ""
+  ).trim()
   const genre = (url.searchParams.get("genre") || "").trim()
 
-  if (q.length < 3) {
-    return json({ suggestions: [] })
+  if (song.length < 3) {
+    return emptySuggestions()
   }
 
   const params: SearchParam = {
-    q,
+    q: null,
     credit: credit || null,
+    track: song || null,
     genre: genre || null,
-    type: "master",
+    type: "release",
     per_page: 5,
     page: 1,
   }
@@ -35,17 +43,21 @@ export async function loader({ request }: { request: Request }) {
       params
     )
     if (searchResults.rateLimited) {
-      return json({ suggestions: [] })
+      return emptySuggestions()
     }
 
     const suggestions: SearchResult[] = (searchResults.results || []).slice(0, 5)
-    return json({ suggestions })
+    return { suggestions }
   } catch (error) {
     if (!isExpectedDiscogsSuggestionError(error)) {
       console.error("Failed to fetch Discogs suggestions:", error)
     }
-    return json({ suggestions: [] })
+    return emptySuggestions()
   }
+}
+
+function emptySuggestions(): SuggestionData {
+  return { suggestions: [] }
 }
 
 function isExpectedDiscogsSuggestionError(error: unknown) {

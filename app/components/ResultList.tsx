@@ -1,16 +1,8 @@
 import { Badge, Box, HStack, Image, Text, VStack, Wrap } from "@chakra-ui/react"
 import { Link } from "@remix-run/react"
 
-import { AppIcon } from "./AppIcon"
 import { SearchResult } from "../types"
-
-function buildSearchParams(searchParams: { [key: string]: string }) {
-  const params = new URLSearchParams()
-  Object.entries(searchParams).forEach(([key, value]) => {
-    if (value) params.set(key, value)
-  })
-  return params.toString()
-}
+import { AppIcon } from "./AppIcon"
 
 export function ResultList({
   results,
@@ -21,12 +13,11 @@ export function ResultList({
 }) {
   if (results.length === 0) return null
 
-  const queryString = buildSearchParams(searchParams)
-
   return (
     <Box mt={5}>
       {results.map((result) => {
         const summary = buildSummary(result)
+        const queryString = buildSearchParams(searchParams, result)
 
         return (
           <Box
@@ -106,13 +97,25 @@ export function ResultList({
   )
 }
 
+function buildSearchParams(
+  searchParams: { [key: string]: string },
+  result: SearchResult
+) {
+  const params = new URLSearchParams()
+
+  Object.entries(searchParams).forEach(([key, value]) => {
+    if (value) params.set(key, value)
+  })
+
+  if (result.type === "release") {
+    params.set("kind", "release")
+  }
+
+  return params.toString()
+}
+
 function buildSummary(result: SearchResult) {
-  return [
-    result.year,
-    result.country,
-    firstValue(result.label),
-    result.catno,
-  ]
+  return [result.year, result.country, firstValue(result.label), result.catno]
     .filter(Boolean)
     .join(" / ")
 }

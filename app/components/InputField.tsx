@@ -20,7 +20,7 @@ export function InputField({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="flex-grow p-2 border border-gray-300 rounded-md bg-white text-black"
+        className="flex-grow rounded-md border border-gray-300 bg-white p-2 text-black"
       />
       <button type="button" onClick={onClear} className="ml-2 text-gray-600">
         Clear
