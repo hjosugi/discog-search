@@ -1,7 +1,9 @@
-import { Box, Image, Text } from "@chakra-ui/react"
-import { Link } from "@remix-run/react"
+import { Badge, Box, HStack, Image, Text, VStack, Wrap } from "@chakra-ui/react"
+import { Link } from "react-router"
 
-import { SearchParam, SearchResult } from "../types"
+import { SearchResult } from "../types"
+import { AppIcon } from "./AppIcon"
+
 export function ResultList({
   results,
   searchParams,
@@ -13,30 +15,119 @@ export function ResultList({
 
   return (
     <Box mt={5}>
-      {results.map((result) => (
-        <Box key={result.id} mb={3}>
-          <Link
-            to={`/search/${result.id}?${new URLSearchParams(
-              searchParams
-            ).toString()}`}
+      {results.map((result) => {
+        const summary = buildSummary(result)
+        const queryString = buildSearchParams(searchParams, result)
+
+        return (
+          <Box
+            key={result.id}
+            mb={3}
+            bg="white"
+            borderWidth="1px"
+            borderColor="gray.200"
+            borderRadius="md"
+            transition="border-color 120ms ease, box-shadow 120ms ease"
+            _hover={{ borderColor: "blue.300", boxShadow: "sm" }}
           >
-            <Box display="flex" alignItems="center">
-              <Image
-                src={result.thumb}
-                alt={result.title}
-                boxSize="50px"
-                mr={3}
-              />
-              <Box>
-                <Text fontSize="lg">{result.title}</Text>
-                <Text fontSize="sm" color="gray.500">
-                  {result.year}
-                </Text>
-              </Box>
-            </Box>
-          </Link>
-        </Box>
-      ))}
+            <Link to={`/search/${result.id}${queryString ? `?${queryString}` : ""}`}>
+              <HStack align="start" spacing={3} p={3}>
+                {result.thumb ? (
+                  <Image
+                    src={result.thumb}
+                    alt={result.title}
+                    boxSize={{ base: "56px", md: "64px" }}
+                    objectFit="cover"
+                    borderRadius="sm"
+                    flexShrink={0}
+                  />
+                ) : (
+                  <Box
+                    alignItems="center"
+                    boxSize={{ base: "56px", md: "64px" }}
+                    bg="gray.100"
+                    borderRadius="sm"
+                    color="gray.400"
+                    display="flex"
+                    flexShrink={0}
+                    justifyContent="center"
+                  >
+                    <AppIcon name="disc" size={24} />
+                  </Box>
+                )}
+                <VStack align="stretch" spacing={2} flex="1" minW={0}>
+                  <HStack align="start" justify="space-between" spacing={3}>
+                    <Box minW={0}>
+                      <Text fontSize="md" fontWeight="semibold" noOfLines={2}>
+                        {result.title}
+                      </Text>
+                      {summary && (
+                        <HStack color="gray.600" spacing={1} mt={1}>
+                          <AppIcon name="tag" size={13} />
+                          <Text fontSize="sm" noOfLines={1}>
+                            {summary}
+                          </Text>
+                        </HStack>
+                      )}
+                    </Box>
+                    <Text color="gray.400" flexShrink={0} mt={1}>
+                      <AppIcon name="external" size={15} />
+                    </Text>
+                  </HStack>
+                  <Wrap spacing={1}>
+                    {buildTags(result).map((tag) => (
+                      <Badge
+                        key={tag}
+                        bg="gray.100"
+                        color="gray.700"
+                        fontWeight="medium"
+                        textTransform="none"
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </Wrap>
+                </VStack>
+              </HStack>
+            </Link>
+          </Box>
+        )
+      })}
     </Box>
   )
+}
+
+function buildSearchParams(
+  searchParams: { [key: string]: string },
+  result: SearchResult
+) {
+  const params = new URLSearchParams()
+
+  Object.entries(searchParams).forEach(([key, value]) => {
+    if (value) params.set(key, value)
+  })
+
+  if (result.type === "release") {
+    params.set("kind", "release")
+  }
+
+  return params.toString()
+}
+
+function buildSummary(result: SearchResult) {
+  return [result.year, result.country, firstValue(result.label), result.catno]
+    .filter(Boolean)
+    .join(" / ")
+}
+
+function buildTags(result: SearchResult) {
+  return [
+    firstValue(result.format),
+    firstValue(result.genre),
+    firstValue(result.style),
+  ].filter((tag): tag is string => Boolean(tag))
+}
+
+function firstValue(values?: string[]) {
+  return values?.find(Boolean)
 }

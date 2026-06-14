@@ -4,13 +4,16 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-} from "@remix-run/react"
-import type { LinksFunction } from "@remix-run/node"
+  type LinksFunction,
+} from "react-router"
 import { ChakraProvider } from "@chakra-ui/react"
 
 import "./tailwind.css"
 
 export const links: LinksFunction = () => [
+  { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+  { rel: "alternate icon", href: "/favicon.ico", type: "image/x-icon" },
+  { rel: "manifest", href: "/site.webmanifest" },
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
     rel: "preconnect",

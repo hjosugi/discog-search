@@ -1,35 +1,87 @@
+export interface DiscogsArtist {
+  id?: number
+  name: string
+  anv?: string
+  join?: string
+  role?: string
+  tracks?: string
+  resource_url?: string
+  thumbnail_url?: string
+}
+
+export interface DiscogsImage {
+  uri?: string
+  uri150?: string
+  width?: number
+  height?: number
+  type?: string
+}
+
+export interface DiscogsVideo {
+  uri: string
+  title: string
+  description?: string
+  duration?: number
+  embed?: boolean
+}
+
 export interface Album {
   id: number
   title: string
   artist: string
   thumb: string
-  year?: number // 任意のプロパティ
-  // 他のプロパティも追加
+  year?: number
+}
+
+export interface ExtraArtist {
+  name: string
+  role: string
+  anv?: string
+  join?: string
+  tracks?: string
+  id?: number
+  resource_url?: string
+  thumbnail_url?: string
 }
 
 export interface TrackItem {
   position: string
   type_: string
   title: string
-  duration: string
+  duration?: string
+  extraartists?: ExtraArtist[]
 }
 
-export interface ExtraArtist {
-  name: string
-  anv: string
-  join: string
-  role: string
-  tracks: string
-  id: number
-  resource_url: string
-}
-
-export interface SearchParam {
+export interface SearchParam
+  extends Record<string, string | number | null | undefined> {
   page: number
   q?: string | null
-  type: "master"
+  artist?: string | null
+  credit?: string | null
+  track?: string | null
+  genre?: string | null
+  type: "master" | "release"
   per_page: number
 }
+
+export interface DiscogsMaster {
+  id: number
+  title: string
+  year?: number
+  artists?: DiscogsArtist[]
+  images?: DiscogsImage[]
+  tracklist?: TrackItem[]
+  extraartists?: ExtraArtist[]
+  main_release?: number
+  uri?: string
+}
+
+export interface DiscogsRelease extends DiscogsMaster {
+  videos?: DiscogsVideo[]
+  artists_sort?: string
+  master_id?: number
+}
+
 export interface SearchResult {
   id: number
   title: string
