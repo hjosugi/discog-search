@@ -23,6 +23,18 @@ search is implemented through Discogs database search filters:
 - `genre=<genre>` for genre filtering.
 - `type=release` when `credit` or `song` is present.
 
+Discogs' public data model is release-oriented. The search API can filter by
+`credit`, but it does not answer "who played drums on this exact track?" in one
+request. The app therefore uses a two-stage approach:
+
+1. Search releases with `credit`, `track`, and `genre` filters.
+2. Open the selected release/master detail and inspect `extraartists` on the
+   release and selected track.
+
+The UI used to call this field `person`, but that name was misleading because
+the Discogs request parameter is `credit`. The app now writes `credit` in URLs
+and still reads old `person` links as a compatibility fallback.
+
 `type=release` is intentional: release records usually contain the useful
 tracklist and credit detail needed to answer questions like "which albums has
 Tony Williams appeared on as a sideman?"
@@ -81,6 +93,8 @@ Framework Mode. The important compatibility work is:
 - Vite-based Remix build is already in use.
 - Node 20+ is required.
 - TypeScript uses bundler module resolution.
+- `app/routes.ts` is present and `v3_routeConfig` is enabled, so the app no
+  longer depends on Remix's implicit file-route discovery.
 - `v3_singleFetch` and `v3_lazyRouteDiscovery` are enabled.
 - Deprecated `json()` loader helper usage is removed from touched routes.
 

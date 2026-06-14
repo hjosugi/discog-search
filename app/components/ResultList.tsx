@@ -1,5 +1,5 @@
 import { Badge, Box, HStack, Image, Text, VStack, Wrap } from "@chakra-ui/react"
-import { Link } from "@remix-run/react"
+import { Link } from "react-router"
 
 import { SearchResult } from "../types"
 import { AppIcon } from "./AppIcon"

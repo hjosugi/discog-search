@@ -4,7 +4,7 @@ import {
   Link as RemixLink,
   useLoaderData,
   useRouteError,
-} from "@remix-run/react"
+} from "react-router"
 import {
   Badge,
   Box,
