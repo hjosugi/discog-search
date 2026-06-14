@@ -1,9 +1,17 @@
 // 入力フィールドコンポーネント
+<<<<<<< HEAD
 import type { ChangeEventHandler } from "react"
 
 interface InputFieldProps {
   value: string
   onChange: ChangeEventHandler<HTMLInputElement>
+||||||| e3e4796
+export function InputField({ value, onChange, placeholder, onClear }: any) {
+=======
+interface InputFieldProps {
+  value: string
+  onChange: React.ChangeEventHandler<HTMLInputElement>
+>>>>>>> origin/codex/add-musician-information-feature
   placeholder: string
   onClear: () => void
 }

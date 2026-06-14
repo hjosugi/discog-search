@@ -31,9 +31,18 @@ export async function loader({ request }: { request: Request }) {
   }
 
   const params: SearchParam = {
+<<<<<<< HEAD
     q,
     credit,
     genre,
+||||||| e3e4796
+    q: q || artist || credit,
+=======
+    q: q || undefined,
+    artist: artist || undefined,
+    credit: credit || undefined,
+    genre: genre || undefined,
+>>>>>>> origin/codex/add-musician-information-feature
     type: "master",
     per_page: 100,
     page: 1,
@@ -41,7 +50,13 @@ export async function loader({ request }: { request: Request }) {
   let searchResults = await discogsFetch("database/search", params)
   let allResults = searchResults.results
 
+<<<<<<< HEAD
   const MAX = artist || credit ? 3 : 1
+||||||| e3e4796
+  let MAX = artist ? 3 : 1
+=======
+  const MAX = artist ? 3 : 1
+>>>>>>> origin/codex/add-musician-information-feature
   while (
     searchResults.pagination &&
     searchResults.pagination.page < searchResults.pagination.pages &&
@@ -95,6 +110,7 @@ export default function SearchPage() {
   const [genre, setGenre] = useState(() => searchParams.get("genre") || "")
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false)
 
+<<<<<<< HEAD
   const isSearchDisabled = !q && !credit && !genre
   const suggestions = suggestionsFetcher.data?.suggestions || []
   const showSuggestions =
@@ -113,6 +129,11 @@ export default function SearchPage() {
 
     return () => window.clearTimeout(timeout)
   }, [credit, genre, q, suggestionsFetcher])
+||||||| e3e4796
+  const isSearchDisabled = !q && !artist && !credit
+=======
+  const isSearchDisabled = !q && !artist && !credit && !genre
+>>>>>>> origin/codex/add-musician-information-feature
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

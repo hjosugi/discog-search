@@ -2,6 +2,7 @@ import { Box, Image, Text } from "@chakra-ui/react"
 import { Link } from "@remix-run/react"
 
 import { SearchResult } from "../types"
+<<<<<<< HEAD
 
 function buildSearchParams(searchParams: { [key: string]: string }) {
   const params = new URLSearchParams()
@@ -11,6 +12,10 @@ function buildSearchParams(searchParams: { [key: string]: string }) {
   return params.toString()
 }
 
+||||||| e3e4796
+import { SearchParam, SearchResult } from "../types"
+=======
+>>>>>>> origin/codex/add-musician-information-feature
 export function ResultList({
   results,
   searchParams,

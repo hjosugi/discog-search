@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useMemo } from "react"
 import { useLoaderData, Link as RemixLink } from "@remix-run/react"
 import {
@@ -16,8 +17,15 @@ import {
   Wrap,
   WrapItem,
 } from "@chakra-ui/react"
+||||||| e3e4796
+import { useLoaderData, Link } from "@remix-run/react"
+=======
+import { useMemo, useState } from "react"
+import { useLoaderData, Link } from "@remix-run/react"
+>>>>>>> origin/codex/add-musician-information-feature
 import { discogsFetch } from "~/utils/discogsAuthMiddleware"
 import {
+<<<<<<< HEAD
   DiscogsMaster,
   DiscogsRelease,
   DiscogsVideo,
@@ -60,6 +68,110 @@ const PERFORMANCE_ROLE_PATTERNS = [
   "strings",
   "performer",
 ]
+||||||| e3e4796
+  Box,
+  Heading,
+  Text,
+  Image,
+  VStack,
+  HStack,
+  Button,
+} from "@chakra-ui/react"
+import { TrackItem } from "~/types"
+import { fontFace } from "@fluentui/react"
+=======
+  Badge,
+  Box,
+  Button,
+  Divider,
+  Heading,
+  HStack,
+  Image,
+  Input,
+  Link as ChakraLink,
+  SimpleGrid,
+  Text,
+  VStack,
+} from "@chakra-ui/react"
+import { AlbumArtist, DiscogsMaster, ExtraArtist, TrackItem } from "~/types"
+
+type Credit = ExtraArtist & {
+  normalizedRole: string
+  trackTitles: string[]
+}
+
+const PLAYER_ROLE_KEYWORDS = [
+  "drum",
+  "percussion",
+  "bass",
+  "guitar",
+  "piano",
+  "keyboard",
+  "synth",
+  "vocal",
+  "sax",
+  "trumpet",
+  "trombone",
+  "violin",
+  "cello",
+  "producer",
+  "arranged",
+  "conductor",
+]
+
+function normalize(value = "") {
+  return value.toLowerCase().replace(/\[[^\]]*\]/g, "").trim()
+}
+
+function trackPositions(trackRefs = "") {
+  return trackRefs
+    .split(",")
+    .map((track) => track.trim())
+    .filter(Boolean)
+}
+
+function isTrackMatch(credit: ExtraArtist, track: TrackItem) {
+  const positions = trackPositions(credit.tracks)
+
+  if (positions.length === 0) {
+    return true
+  }
+
+  return positions.some((position) => {
+    const [start, end] = position.split(" to ").map((item) => item.trim())
+    if (end) {
+      return track.position >= start && track.position <= end
+    }
+    return position === track.position
+  })
+}
+
+function buildCredits(extraartists: ExtraArtist[] = [], tracks: TrackItem[] = []) {
+  return extraartists.map((artist) => ({
+    ...artist,
+    normalizedRole: normalize(artist.role),
+    trackTitles: tracks
+      .filter((track) => isTrackMatch(artist, track))
+      .map((track) => `${track.position} ${track.title}`),
+  }))
+}
+
+function buildServiceLinks(album: DiscogsMaster, selectedTrackTitle?: string | null) {
+  const artist = album.artists?.map((item) => item.name).join(" ") || ""
+  const title = selectedTrackTitle || album.title
+  const query = encodeURIComponent(`${artist} ${title}`.replace(/\s+/g, " ").trim())
+
+  return [
+    {
+      label: "Apple Music",
+      href: `https://music.apple.com/us/search?term=${query}`,
+    },
+    { label: "Spotify", href: `https://open.spotify.com/search/${query}` },
+    { label: "YouTube Music", href: `https://music.youtube.com/search?q=${query}` },
+    { label: "Amazon Music", href: `https://music.amazon.com/search/${query}` },
+  ]
+}
+>>>>>>> origin/codex/add-musician-information-feature
 
 export async function loader({
   params,
@@ -104,6 +216,7 @@ export async function loader({
 }
 
 export default function AlbumView() {
+<<<<<<< HEAD
   const { master, release, selectedTrackPosition, searchQuery, backQuery } =
     useLoaderData<LoaderData>()
   const tracks = release.tracklist || master.tracklist || []
@@ -131,8 +244,41 @@ export default function AlbumView() {
     .join(" ")
   const videos = getMatchingVideos(release.videos || [], selectedTrack?.title)
   const coverImage = getCoverImage(release, master) || undefined
+||||||| e3e4796
+  const { album, q } = useLoaderData<{
+    album: any
+    q: string
+  }>()
+=======
+  const { album, q, track } = useLoaderData<{
+    album: DiscogsMaster
+    q: string
+    track: string | null
+  }>()
+  const [selectedTrack, setSelectedTrack] = useState(track || "")
+  const [roleFilter, setRoleFilter] = useState("drum")
+
+  const selectedTrackItem = album.tracklist?.find(
+    (trackItem: TrackItem) => trackItem.position === selectedTrack
+  )
+  const credits = useMemo(
+    () => buildCredits(album.extraartists, album.tracklist),
+    [album.extraartists, album.tracklist]
+  )
+  const visibleCredits = credits.filter((credit: Credit) => {
+    const matchesTrack = selectedTrackItem ? isTrackMatch(credit, selectedTrackItem) : true
+    const matchesRole = roleFilter
+      ? credit.normalizedRole.includes(normalize(roleFilter)) ||
+        normalize(credit.name).includes(normalize(roleFilter))
+      : PLAYER_ROLE_KEYWORDS.some((keyword) => credit.normalizedRole.includes(keyword))
+
+    return matchesTrack && matchesRole
+  })
+  const serviceLinks = buildServiceLinks(album, selectedTrackItem?.title)
+>>>>>>> origin/codex/add-musician-information-feature
 
   return (
+<<<<<<< HEAD
     <Box p={{ base: 4, md: 6 }} maxW="1040px" mx="auto">
       <Stack
         direction={{ base: "column", md: "row" }}
@@ -140,17 +286,47 @@ export default function AlbumView() {
         align="start"
       >
         {coverImage ? (
+||||||| e3e4796
+    <VStack spacing={2} p={1} align="center" w="full" maxH="90vh" mt="5%">
+      <Box w="full">
+        <HStack
+          spacing={6}
+          align="start"
+          w="full"
+          justify="center"
+          flexWrap="wrap"
+        >
+=======
+    <VStack spacing={4} p={{ base: 4, md: 8 }} align="stretch" maxW="1000px" mx="auto">
+      <HStack spacing={6} align="start" flexWrap="wrap">
+        {album.images?.[0]?.uri && (
+>>>>>>> origin/codex/add-musician-information-feature
           <Image
+<<<<<<< HEAD
             src={coverImage}
             alt={release.title}
             boxSize={{ base: "150px", md: "190px" }}
+||||||| e3e4796
+            src={album.images[0].uri}
+            alt={album.title}
+            boxSize={{ base: "25%" }}
+=======
+            src={album.images[0].uri}
+            alt={album.title}
+            boxSize={{ base: "140px", md: "220px" }}
+>>>>>>> origin/codex/add-musician-information-feature
             objectFit="cover"
-            borderRadius="md"
+            borderRadius="lg"
           />
+<<<<<<< HEAD
         ) : (
           <Box boxSize={{ base: "150px", md: "190px" }} bg="gray.100" />
+||||||| e3e4796
+=======
+>>>>>>> origin/codex/add-musician-information-feature
         )}
 
+<<<<<<< HEAD
         <VStack align="stretch" spacing={3} flex="1">
           <Box>
             <Heading as="h1" size={{ base: "md", md: "lg" }}>
@@ -347,6 +523,158 @@ function CreditList({
           </HStack>
         </Box>
       ))}
+||||||| e3e4796
+          <VStack align="flex-start" spacing={2} maxW="lg" ml={1}>
+            <Heading as="h1" size={{ base: "sm", md: "md" }} fontWeight="bold">
+              {album.title}
+            </Heading>
+            <Text fontSize={{ base: "xs", md: "sm" }}>
+              <strong>Year: </strong> {album.year}
+            </Text>
+
+            <Text fontSize={{ base: "sm", md: "md" }} fontWeight="bold">
+              Artist:{" "}
+              {album.artists.map((artist: any) => (
+                <Text
+                  as="span"
+                  key={artist.id}
+                  fontSize={{ base: "xs", md: "sm" }}
+                  fontWeight="normal"
+                >
+                  {artist.name}{" "}
+                </Text>
+              ))}
+            </Text>
+
+            {album.extraartists?.length > 0 && (
+              <Text fontSize={{ base: "sm", md: "md" }} fontWeight="bold">
+                Personnels:{" "}
+                {album.extraartists.map((extraArtist: any) => (
+                  <Text as="span" key={extraArtist.id}>
+                    {extraArtist.name}
+                  </Text>
+                ))}
+              </Text>
+            )}
+
+            <Link
+              target="_blank"
+              to={`https://www.discogs.com/master/${album.id}`}
+            >
+              <Button colorScheme="blue" variant="link">
+                Discogs
+              </Button>
+            </Link>
+          </VStack>
+        </HStack>
+      </Box>
+      <VStack
+        h={{ base: "50vh", md: "50vh" }}
+        overflowY="auto"
+        w={{ base: "80%", md: "60%" }}
+        pl="12%"
+        pr="10%"
+      >
+        {album.tracklist.map((trackItem: TrackItem, index: number) => (
+          <Box key={index} w="full" p={1} _hover={{ bg: "gray.50" }}>
+            <HStack justify="space-between" w="full">
+              <Text fontSize={{ base: "xs", md: "md" }}>{trackItem.title}</Text>
+              <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600">
+                {trackItem.duration}
+              </Text>
+            </HStack>
+          </Box>
+        ))}
+      </VStack>
+      <Link to={`/search?${q}`}>
+        <Button
+          colorScheme="blue"
+          size={{ base: "md", md: "lg" }}
+          variant="link"
+        >
+          Back to List
+        </Button>
+      </Link>
+=======
+        <VStack align="flex-start" spacing={3} flex="1" minW="260px">
+          <Heading as="h1" size={{ base: "md", md: "lg" }}>
+            {album.title}
+          </Heading>
+          <Text>
+            <strong>Artist:</strong>{" "}
+            {album.artists?.map((artist: AlbumArtist) => artist.name).join(", ")}
+          </Text>
+          {album.year && <Text><strong>Year:</strong> {album.year}</Text>}
+          <HStack wrap="wrap">
+            <ChakraLink href={`https://www.discogs.com/master/${album.id}`} isExternal>
+              <Button colorScheme="blue" variant="outline" size="sm">Discogs</Button>
+            </ChakraLink>
+            {serviceLinks.map((service) => (
+              <ChakraLink key={service.label} href={service.href} isExternal>
+                <Button colorScheme="green" size="sm">{service.label}</Button>
+              </ChakraLink>
+            ))}
+          </HStack>
+        </VStack>
+      </HStack>
+
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+        <Box borderWidth="1px" borderRadius="lg" p={4}>
+          <Heading as="h2" size="sm" mb={3}>曲を選ぶ</Heading>
+          <VStack align="stretch" maxH="420px" overflowY="auto" spacing={2}>
+            {album.tracklist?.map((trackItem: TrackItem) => (
+              <Button
+                key={`${trackItem.position}-${trackItem.title}`}
+                justifyContent="space-between"
+                variant={selectedTrack === trackItem.position ? "solid" : "ghost"}
+                colorScheme={selectedTrack === trackItem.position ? "blue" : "gray"}
+                onClick={() => setSelectedTrack(trackItem.position)}
+              >
+                <Text as="span" noOfLines={1}>{trackItem.position} {trackItem.title}</Text>
+                <Text as="span" fontSize="xs">{trackItem.duration}</Text>
+              </Button>
+            ))}
+          </VStack>
+        </Box>
+
+        <Box borderWidth="1px" borderRadius="lg" p={4}>
+          <Heading as="h2" size="sm" mb={2}>演奏者・クレジット</Heading>
+          <Text fontSize="sm" color="gray.600" mb={3}>
+            例: drum / bass / guitar / vocal。空欄にすると演奏系ロールをまとめて表示します。
+          </Text>
+          <Input
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value)}
+            placeholder="ロールや名前で絞り込み"
+            size="sm"
+            mb={3}
+          />
+          <VStack align="stretch" maxH="420px" overflowY="auto" divider={<Divider />}>
+            {visibleCredits.length > 0 ? (
+              visibleCredits.map((credit: Credit) => (
+                <Box key={`${credit.id}-${credit.name}-${credit.role}`} py={2}>
+                  <HStack wrap="wrap" mb={1}>
+                    <Text fontWeight="bold">{credit.name}</Text>
+                    <Badge colorScheme="purple">{credit.role}</Badge>
+                  </HStack>
+                  {credit.trackTitles.length > 0 && (
+                    <Text fontSize="xs" color="gray.600" noOfLines={2}>
+                      {credit.trackTitles.join(", ")}
+                    </Text>
+                  )}
+                </Box>
+              ))
+            ) : (
+              <Text color="gray.500">条件に合うクレジットが見つかりません。</Text>
+            )}
+          </VStack>
+        </Box>
+      </SimpleGrid>
+
+      <Link to={`/search?${q}`}>
+        <Button colorScheme="blue" variant="link">Back to List</Button>
+      </Link>
+>>>>>>> origin/codex/add-musician-information-feature
     </VStack>
   )
 }
