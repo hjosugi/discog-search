@@ -98,6 +98,7 @@ export default function SearchPage() {
     () => searchParams.get("song") || searchParams.get("q") || ""
   )
   const [genre, setGenre] = useState(() => searchParams.get("genre") || "")
+  const [role, setRole] = useState(() => searchParams.get("role") || "")
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false)
 
   const isSearchDisabled = !credit && !song && !genre
@@ -125,6 +126,7 @@ export default function SearchPage() {
     if (credit) params.append("credit", credit)
     if (song) params.append("song", song)
     if (genre) params.append("genre", genre)
+    if (role) params.append("role", role)
     window.location.search = params.toString()
   }
 
@@ -133,6 +135,7 @@ export default function SearchPage() {
     params.set("song", song || suggestion.title)
     if (credit) params.set("credit", credit)
     if (genre) params.set("genre", genre)
+    if (role) params.set("role", role)
     if (suggestion.type === "release") params.set("kind", "release")
     return `/search/${suggestion.id}?${params.toString()}`
   }
@@ -285,6 +288,22 @@ export default function SearchPage() {
               />
             </InputGroup>
 
+            <InputGroup
+              size="md"
+              gridColumn={{ base: "auto", md: "1 / 3", lg: "1 / 4" }}
+            >
+              <InputLeftElement color="gray.400">
+                <AppIcon name="mic" size={16} />
+              </InputLeftElement>
+              <Input
+                placeholder="Instrument / role filter, e.g. drums"
+                value={role}
+                onChange={(event) => setRole(event.target.value)}
+                list="role-suggestions"
+                bg="white"
+              />
+            </InputGroup>
+
             <Button
               colorScheme="blue"
               type="submit"
@@ -308,6 +327,14 @@ export default function SearchPage() {
             <option value="Hip Hop" />
             <option value="Electronic" />
           </datalist>
+          <datalist id="role-suggestions">
+            <option value="drums" />
+            <option value="bass" />
+            <option value="guitar" />
+            <option value="piano" />
+            <option value="saxophone" />
+            <option value="vocals" />
+          </datalist>
         </Box>
 
         <Box mt={4}>
@@ -324,7 +351,10 @@ export default function SearchPage() {
                   <AlertDescription>{errorMessage}</AlertDescription>
                 </Alert>
               )}
-              <ResultList results={results} searchParams={{ credit, song, genre }} />
+              <ResultList
+                results={results}
+                searchParams={{ credit, song, genre, role }}
+              />
             </>
           )}
         </Box>

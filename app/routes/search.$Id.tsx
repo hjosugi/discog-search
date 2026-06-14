@@ -45,6 +45,7 @@ type LoaderData = {
   release: DiscogsRelease
   selectedTrackPosition: string | null
   searchQuery: string
+  roleFilter: string
   backQuery: string
   detailId: string
   detailKind: "master" | "release"
@@ -90,6 +91,7 @@ export async function loader({
   const resultKind = searchParams.get("kind") === "release" ? "release" : "master"
   const requestedTrack = searchParams.get("track")
   const searchQuery = searchParams.get("song") || searchParams.get("q") || ""
+  const roleFilter = searchParams.get("role") || ""
 
   if (!albumId) {
     throw new Response("Album ID is required", { status: 400 })
@@ -119,6 +121,7 @@ export async function loader({
       release: resolvedRelease,
       selectedTrackPosition,
       searchQuery,
+      roleFilter,
       backQuery: searchParams.toString(),
       detailId: albumId,
       detailKind: resultKind,
@@ -246,6 +249,7 @@ export default function AlbumView() {
     release,
     selectedTrackPosition,
     searchQuery,
+    roleFilter,
     backQuery,
     detailId,
     detailKind,
@@ -269,6 +273,10 @@ export default function AlbumView() {
   const performanceCredits = selectedCredits.filter((credit) =>
     isPerformanceRole(credit.role)
   )
+  const visiblePerformanceCredits = filterCreditsByRole(
+    performanceCredits,
+    roleFilter
+  )
   const otherCredits = selectedCredits.filter(
     (credit) => !isPerformanceRole(credit.role)
   )
@@ -277,9 +285,10 @@ export default function AlbumView() {
     release.artists?.map((artist) => artist.name).join(", ") ||
     master.artists?.map((artist) => artist.name).join(", ") ||
     ""
-  const playQuery = [artistName, selectedTrack?.title || release.title]
-    .filter(Boolean)
-    .join(" ")
+  const playQuery = buildPlaybackQuery(
+    artistName,
+    selectedTrack?.title || release.title
+  )
   const videos = getMatchingVideos(release.videos || [], selectedTrack?.title)
   const coverImage = getCoverImage(release, master) || undefined
 
@@ -347,7 +356,9 @@ export default function AlbumView() {
                     </Text>
                   </Box>
                   <Badge colorScheme="blue">
-                    {performanceCredits.length} performers
+                    {roleFilter
+                      ? `${visiblePerformanceCredits.length}/${performanceCredits.length} performers`
+                      : `${performanceCredits.length} performers`}
                   </Badge>
                 </HStack>
               </Box>
@@ -397,9 +408,19 @@ export default function AlbumView() {
             p={4}
           >
             <SectionTitle>Performers</SectionTitle>
+            <RoleFilterLinks
+              detailId={detailId}
+              detailKind={detailKind}
+              backQuery={backQuery}
+              activeRole={roleFilter}
+            />
             <CreditList
-              credits={performanceCredits}
-              emptyText="No performer credits were found for this track."
+              credits={visiblePerformanceCredits}
+              emptyText={
+                roleFilter
+                  ? `No ${roleFilter} credits were found for this track.`
+                  : "No performer credits were found for this track."
+              }
             />
 
             {otherCredits.length > 0 && (
@@ -564,6 +585,57 @@ function CreditList({
   )
 }
 
+function RoleFilterLinks({
+  detailId,
+  detailKind,
+  backQuery,
+  activeRole,
+}: {
+  detailId: string
+  detailKind: "master" | "release"
+  backQuery: string
+  activeRole: string
+}) {
+  const roles = ["drums", "bass", "guitar", "piano", "sax", "vocals"]
+
+  return (
+    <Wrap spacing={2} mb={3}>
+      {roles.map((role) => {
+        const params = new URLSearchParams(backQuery)
+        params.set("role", role)
+        if (detailKind === "release") params.set("kind", "release")
+        const isActive = normalize(role) === normalize(activeRole)
+
+        return (
+          <WrapItem key={role}>
+            <Button
+              as={RemixLink}
+              to={`/search/${detailId}?${params.toString()}`}
+              colorScheme={isActive ? "blue" : "gray"}
+              size="xs"
+              variant={isActive ? "solid" : "outline"}
+            >
+              {role}
+            </Button>
+          </WrapItem>
+        )
+      })}
+      {activeRole && (
+        <WrapItem>
+          <Button
+            as={RemixLink}
+            to={`/search/${detailId}?${clearRoleFilter(backQuery, detailKind)}`}
+            size="xs"
+            variant="ghost"
+          >
+            Clear
+          </Button>
+        </WrapItem>
+      )}
+    </Wrap>
+  )
+}
+
 function findBestTrackMatch(tracks: TrackItem[], query: string) {
   const normalizedQuery = normalize(query)
   if (!normalizedQuery) return null
@@ -638,6 +710,19 @@ function isPerformanceRole(role: string) {
   )
 }
 
+function filterCreditsByRole(credits: Credit[], roleFilter: string) {
+  const normalizedFilter = normalize(roleFilter)
+  if (!normalizedFilter) return credits
+
+  return credits.filter((credit) => {
+    const normalizedRole = normalize(credit.role)
+    return (
+      normalizedRole.includes(normalizedFilter) ||
+      normalizedFilter.includes(normalizedRole)
+    )
+  })
+}
+
 function dedupeCredits(credits: Credit[]) {
   const seen = new Set<string>()
   return credits.filter((credit) => {
@@ -676,6 +761,34 @@ function buildStreamingLinks(query: string) {
       colorScheme: "red",
     },
   ]
+}
+
+function buildPlaybackQuery(artistName: string, trackTitle: string) {
+  return [getPrimaryArtistName(artistName), cleanSearchText(trackTitle)]
+    .filter(Boolean)
+    .join(" ")
+}
+
+function getPrimaryArtistName(artistName: string) {
+  return cleanSearchText(artistName.split(/,|\/|;|\s+-\s+/)[0] || artistName)
+}
+
+function cleanSearchText(value: string) {
+  return value
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\[[^\]]*\]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function clearRoleFilter(
+  backQuery: string,
+  detailKind: "master" | "release"
+) {
+  const params = new URLSearchParams(backQuery)
+  params.delete("role")
+  if (detailKind === "release") params.set("kind", "release")
+  return params.toString()
 }
 
 function getCoverImage(release: DiscogsRelease, master: DiscogsMaster) {
