@@ -6,6 +6,8 @@
 - Scripts use `react-router dev`, `react-router build`, and
   `react-router-serve`.
 - The Vite plugin is `reactRouter()` from `@react-router/dev/vite`.
+- Vite is upgraded to 6.x so `future.v8_viteEnvironmentApi` can run in both
+  build and dev.
 - `engines.node` requires Node 20 or newer.
 - `tsconfig.json` uses `moduleResolution: "Bundler"`, includes
   `.react-router/types/**/*`, and runs `react-router typegen` before `tsc`.

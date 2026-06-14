@@ -105,6 +105,7 @@ flags enabled. The important framework pieces are:
 - `app/routes.ts` config routes via `@react-router/dev/routes`.
 - `react-router.config.ts` for framework config and v8 future flags.
 - `HydratedRouter` and `ServerRouter` in the entry files.
+- Vite 6 is used because `v8_viteEnvironmentApi` requires Vite 6 or newer.
 - Node 20+ is required.
 - TypeScript uses bundler module resolution and generated React Router route
   types.
