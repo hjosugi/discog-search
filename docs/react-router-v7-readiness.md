@@ -18,15 +18,18 @@
   helper.
 - Search and detail error handling no longer turns expected Discogs failures
   into full application stack traces.
+- All documented React Router v8 future flags for Framework Mode are enabled:
+  middleware, split route modules, Vite Environment API, pass-through requests,
+  and trailing-slash-aware data requests.
 
 ## Deferred
 
-- The build currently emits React Router v8 future flag warnings. Those should
-  be evaluated separately because they opt into behavior for the next major.
+- Upgrading the package major to React Router v8 should wait until v8 is
+  released and the app can also satisfy its dependency floor.
 - Browser smoke testing against a running local server is still useful for
   search, suggestions, detail pages, favicon, and error boundaries.
 
 ## References
 
-- Remix future flags: https://v2.remix.run/docs/start/future-flags/
 - React Router guide for upgrading from Remix: https://reactrouter.com/upgrading/remix
+- React Router future flags: https://reactrouter.com/upgrading/future

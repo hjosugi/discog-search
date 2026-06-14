@@ -97,14 +97,27 @@ repeat calls during typing and navigation.
 
 ## React Router v7
 
-The app runs on React Router v7 Framework Mode. The important framework pieces
-are:
+The app runs on React Router v7 Framework Mode with the documented v8 future
+flags enabled. The important framework pieces are:
 
 - `react-router dev` and `react-router build` scripts.
 - `reactRouter()` in `vite.config.ts`.
 - `app/routes.ts` config routes via `@react-router/dev/routes`.
-- `react-router.config.ts` for framework config.
+- `react-router.config.ts` for framework config and v8 future flags.
 - `HydratedRouter` and `ServerRouter` in the entry files.
 - Node 20+ is required.
 - TypeScript uses bundler module resolution and generated React Router route
   types.
+
+The enabled future flags are:
+
+- `v8_middleware`
+- `v8_splitRouteModules`
+- `v8_viteEnvironmentApi`
+- `v8_passThroughRequests`
+- `v8_trailingSlashAwareDataRequests`
+
+The app uses `react-router-serve` and does not have a custom `getLoadContext`
+or custom Vite SSR build input, so these flags did not require route-level code
+changes. Loader code that needs normalized route URLs should use the generated
+`url` argument rather than assuming `request.url` is normalized.
