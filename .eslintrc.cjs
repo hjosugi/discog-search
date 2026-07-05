@@ -71,6 +71,12 @@ module.exports = {
         "plugin:import/recommended",
         "plugin:import/typescript",
       ],
+      rules: {
+        "import/no-unresolved": [
+          "error",
+          { ignore: ["^virtual:react-router/server-build$"] },
+        ],
+      },
     },
 
     // Node

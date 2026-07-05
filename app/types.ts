@@ -1,4 +1,4 @@
-export interface DiscogsArtist {
+interface DiscogsArtist {
   id?: number
   name: string
   anv?: string
@@ -9,7 +9,7 @@ export interface DiscogsArtist {
   thumbnail_url?: string
 }
 
-export interface DiscogsImage {
+interface DiscogsImage {
   uri?: string
   uri150?: string
   width?: number
@@ -23,14 +23,6 @@ export interface DiscogsVideo {
   description?: string
   duration?: number
   embed?: boolean
-}
-
-export interface Album {
-  id: number
-  title: string
-  artist: string
-  thumb: string
-  year?: number
 }
 
 export interface ExtraArtist {
@@ -97,9 +89,4 @@ export interface SearchResult {
   barcode?: string[]
   uri?: string
   catno?: string
-}
-
-export interface LoaderData {
-  results: SearchResult[]
-  isSearching: boolean
 }

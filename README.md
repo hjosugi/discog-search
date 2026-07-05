@@ -1,40 +1,100 @@
-# Welcome to Remix!
+# Sideman Album Finder
 
-- 📖 [Remix docs](https://remix.run/docs)
+Sideman Album Finder is a React Router v7 app for searching Discogs releases by performer credit, song title, genre, and local role filters. It is designed for questions like "which albums include Tony Williams as a sideman?" and then lets you inspect release and track-level credits on the detail page.
+
+The app runs on Cloudflare Workers through the Cloudflare Vite plugin. Search uses the Discogs database search API for broad candidate discovery, then release detail pages verify the tracklist and `extraartists` credits.
+
+## Stack
+
+- React 18 and React Router v7 Framework Mode
+- Chakra UI with a small amount of Tailwind CSS
+- Cloudflare Workers and `wrangler`
+- pnpm 9, Node.js 20+
+- Vitest for unit tests
+
+## Setup
+
+Install dependencies:
+
+```sh
+pnpm install
+```
+
+Create local environment files from the example:
+
+```sh
+cp .env.example .env
+cp .env.example .dev.vars
+```
+
+Set at least one Discogs authentication style:
+
+```sh
+DISCOGS_TOKEN=your-discogs-token
+```
+
+or:
+
+```sh
+DISCOGS_API_KEY=your-discogs-key
+DISCOGS_API_SECRET=your-discogs-secret
+```
+
+`DISCOGS_TOKEN` is the preferred path and is also the secret expected by the deploy workflow.
 
 ## Development
 
-Run the dev server:
+Start the local dev server:
 
-```shellscript
-npm run dev
+```sh
+pnpm dev
+```
+
+Run the checks used by CI:
+
+```sh
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+Generate Cloudflare Worker binding types when `wrangler.jsonc` changes:
+
+```sh
+pnpm cf-typegen
+```
+
+Preview a production build locally:
+
+```sh
+pnpm preview
 ```
 
 ## Deployment
 
-First, build your app for production:
+Deploy manually from a configured local environment:
 
 ```sh
-npm run build
+pnpm deploy
 ```
 
-Then run the app in production mode:
+GitHub Actions runs `lint`, `typecheck`, `test`, and `build` on pull requests and pushes to `main`. The deploy workflow runs after the `CI` workflow succeeds on `main`, then deploys with `cloudflare/wrangler-action` when these repository secrets are configured:
 
-```sh
-npm start
-```
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `DISCOGS_TOKEN`
 
-Now you'll need to pick a host to deploy it to.
+## Discogs API Notes
 
-### DIY
+Discogs search is rate-limited. The app wraps Discogs calls in `app/utils/discogsAuthMiddleware.ts`, which adds authentication, caches responses for 10 minutes, coalesces duplicate in-flight requests, and applies a short cooldown after HTTP 429 responses.
 
-If you're familiar with deploying Node applications, the built-in Remix app server is production-ready.
+The app uses Discogs database search filters such as `credit`, `track`, `genre`, and `type=release`. Role filters like `drums` or `bass` are local detail-page filters over loaded `extraartists.role` values because Discogs public search does not expose a stable instrument-role filter.
 
-Make sure to deploy the output of `npm run build`
+When deploying or presenting results, keep Discogs attribution visible in the product UI and link users back to the source release when possible.
 
-- `build/server`
-- `build/client`
+## Documentation
 
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever css framework you prefer. See the [Vite docs on css](https://vitejs.dev/guide/features.html#css) for more information.
+- [Architecture](docs/architecture.md): search flow, request model, ranking, detail flow, and React Router v7 notes.
+- [Explanation](docs/explanation.md): Japanese project notes covering terminology, search behavior, ranking, detail pages, and caching.
+- [React Router v7 readiness](docs/react-router-v7-readiness.md): migration and compatibility notes.
