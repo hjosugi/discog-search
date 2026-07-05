@@ -10,6 +10,7 @@ export class DiscogsFetchError extends Error {
 
 const CACHE_TTL_MS = 10 * 60 * 1000
 const RATE_LIMIT_FALLBACK_MS = 30 * 1000
+const DISCOGS_API_BASE_URL = "https://api.discogs.com"
 
 const responseCache = new Map<
   string,
@@ -25,8 +26,7 @@ export async function discogsFetch<T = unknown>(
   endpoint: string,
   params: Record<string, string | number | null | undefined> = {}
 ): Promise<T> {
-  const apiUrl = `https://api.discogs.com/${endpoint}`
-  const url = new URL(apiUrl)
+  const url = getDiscogsApiUrl(endpoint)
 
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
@@ -89,6 +89,11 @@ export async function discogsFetch<T = unknown>(
 
   pendingRequests.set(cacheKey, request)
   return request as Promise<T>
+}
+
+function getDiscogsApiUrl(endpoint: string) {
+  const baseUrl = process.env.DISCOGS_API_BASE_URL || DISCOGS_API_BASE_URL
+  return new URL(endpoint.replace(/^\/+/, ""), `${baseUrl.replace(/\/+$/, "")}/`)
 }
 
 function getDiscogsHeaders() {

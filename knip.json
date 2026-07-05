@@ -1,0 +1,7 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "ignore": [
+    "tests/e2e/fixtures/discogs-api.mjs",
+    "tests/e2e/run-dev-server.mjs"
+  ]
+}

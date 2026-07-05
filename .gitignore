@@ -21,3 +21,7 @@ worker-configuration.d.ts
 # Logs and OS/editor noise
 *.log
 .DS_Store
+
+# Test artifacts
+/test-results
+/playwright-report

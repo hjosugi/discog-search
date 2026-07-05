@@ -10,7 +10,7 @@ The app runs on Cloudflare Workers through the Cloudflare Vite plugin. Search us
 - Chakra UI with a small amount of Tailwind CSS
 - Cloudflare Workers and `wrangler`
 - pnpm 9, Node.js 20+
-- Vitest for unit tests
+- Vitest for unit tests and Playwright for a mocked end-to-end search flow
 
 ## Setup
 
@@ -57,6 +57,13 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+```
+
+Run the mocked Playwright search flow locally:
+
+```sh
+pnpm exec playwright install chromium
+pnpm test:e2e
 ```
 
 Generate Cloudflare Worker binding types when `wrangler.jsonc` changes:
