@@ -37,7 +37,7 @@ const release = {
   videos: [],
 }
 
-const server = http.createServer((request, response) => {
+const server = http.createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host}`)
 
   if (url.pathname === "/health") {
@@ -45,9 +45,13 @@ const server = http.createServer((request, response) => {
   }
 
   if (url.pathname === "/database/search") {
+    if (isSlowSearch(url.searchParams)) {
+      await delay(900)
+    }
+
     return sendJson(response, {
       pagination: { page: 1, pages: 1 },
-      results: [searchResult],
+      results: isEmptySearch(url.searchParams) ? [] : [searchResult],
     })
   }
 
@@ -68,6 +72,27 @@ process.on("SIGINT", closeServer)
 function sendJson(response, body, status = 200) {
   response.writeHead(status, { "Content-Type": "application/json" })
   response.end(JSON.stringify(body))
+}
+
+function isEmptySearch(searchParams) {
+  return getSearchText(searchParams).includes("no match")
+}
+
+function isSlowSearch(searchParams) {
+  return getSearchText(searchParams).includes("slow search")
+}
+
+function getSearchText(searchParams) {
+  return ["credit", "track", "q", "genre"]
+    .map((key) => searchParams.get(key) || "")
+    .join(" ")
+    .toLowerCase()
+}
+
+function delay(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
 }
 
 function closeServer() {

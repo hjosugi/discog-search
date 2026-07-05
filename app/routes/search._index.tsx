@@ -1,5 +1,11 @@
 import { useEffect, useState, type FormEvent, type MouseEvent } from "react"
-import { useFetcher, useLoaderData, useSearchParams } from "react-router"
+import {
+  useFetcher,
+  useLoaderData,
+  useNavigate,
+  useNavigation,
+  useSearchParams,
+} from "react-router"
 import {
   Alert,
   AlertDescription,
@@ -12,12 +18,11 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
-  Spinner,
   Text,
 } from "@chakra-ui/react"
 
 import { AppIcon } from "../components/AppIcon"
-import { ResultList } from "../components/ResultList"
+import { ResultList, ResultListSkeleton } from "../components/ResultList"
 import { SearchResult } from "../types"
 import { searchDiscogsAlbums } from "../utils/discogsSearch"
 import {
@@ -31,7 +36,6 @@ type SuggestionData = {
 
 type LoaderData = {
   results: SearchResult[]
-  isSearching: boolean
   errorMessage?: string
 }
 
@@ -51,7 +55,7 @@ export async function loader({ request }: { request: Request }) {
   const genre = (url.searchParams.get("genre") || "").trim()
 
   if (!credit && !song && !genre) {
-    return { results: [], isSearching: false }
+    return { results: [] }
   }
 
   try {
@@ -68,7 +72,6 @@ export async function loader({ request }: { request: Request }) {
 
     return {
       results,
-      isSearching: false,
       errorMessage: searchResults.rateLimited
         ? "Discogs is cooling down after rate limiting. Cached results will be used when available."
         : undefined,
@@ -80,31 +83,55 @@ export async function loader({ request }: { request: Request }) {
 
     return {
       results: [],
-      isSearching: false,
       errorMessage: getSearchErrorMessage(error),
     }
   }
 }
 
 export default function SearchPage() {
-  const { results, isSearching, errorMessage } = useLoaderData<LoaderData>()
+  const { results, errorMessage } = useLoaderData<LoaderData>()
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const navigation = useNavigation()
   const suggestionsFetcher = useFetcher<SuggestionData>()
 
-  const [credit, setCredit] = useState(
-    () => searchParams.get("credit") || searchParams.get("person") || ""
-  )
-  const [song, setSong] = useState(
-    () => searchParams.get("song") || searchParams.get("q") || ""
-  )
-  const [genre, setGenre] = useState(() => searchParams.get("genre") || "")
-  const [role, setRole] = useState(() => searchParams.get("role") || "")
+  const submittedCredit = (
+    searchParams.get("credit") ||
+    searchParams.get("person") ||
+    ""
+  ).trim()
+  const submittedSong = (
+    searchParams.get("song") ||
+    searchParams.get("q") ||
+    searchParams.get("artist") ||
+    ""
+  ).trim()
+  const submittedGenre = (searchParams.get("genre") || "").trim()
+  const submittedRole = (searchParams.get("role") || "").trim()
+
+  const [credit, setCredit] = useState(() => submittedCredit)
+  const [song, setSong] = useState(() => submittedSong)
+  const [genre, setGenre] = useState(() => submittedGenre)
+  const [role, setRole] = useState(() => submittedRole)
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false)
 
-  const isSearchDisabled = !credit && !song && !genre
+  const hasSearchCriteria = Boolean(
+    submittedCredit || submittedSong || submittedGenre
+  )
+  const isSearchPending =
+    navigation.state === "loading" && navigation.location?.pathname === "/search"
+  const isSearchDisabled =
+    (!credit.trim() && !song.trim() && !genre.trim()) || isSearchPending
   const suggestions = suggestionsFetcher.data?.suggestions || []
   const showSuggestions =
     isSuggestionOpen && song.trim().length >= 3 && suggestions.length > 0
+
+  useEffect(() => {
+    setCredit(submittedCredit)
+    setSong(submittedSong)
+    setGenre(submittedGenre)
+    setRole(submittedRole)
+  }, [submittedCredit, submittedGenre, submittedRole, submittedSong])
 
   useEffect(() => {
     const query = song.trim()
@@ -123,11 +150,18 @@ export default function SearchPage() {
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     const params = new URLSearchParams()
-    if (credit) params.append("credit", credit)
-    if (song) params.append("song", song)
-    if (genre) params.append("genre", genre)
-    if (role) params.append("role", role)
-    window.location.search = params.toString()
+    const nextCredit = credit.trim()
+    const nextSong = song.trim()
+    const nextGenre = genre.trim()
+    const nextRole = role.trim()
+    if (nextCredit) params.append("credit", nextCredit)
+    if (nextSong) params.append("song", nextSong)
+    if (nextGenre) params.append("genre", nextGenre)
+    if (nextRole) params.append("role", nextRole)
+    navigate({
+      pathname: "/search",
+      search: params.toString() ? `?${params.toString()}` : "",
+    })
   }
 
   const buildSuggestionHref = (suggestion: SearchResult) => {
@@ -166,7 +200,13 @@ export default function SearchPage() {
               Sideman Album Finder
             </Heading>
             <Text fontSize="sm" color="gray.600">
-              {results.length > 0 ? `${results.length} albums` : "Search by player"}
+              {isSearchPending
+                ? "Searching albums"
+                : results.length > 0
+                  ? `${results.length} albums`
+                  : hasSearchCriteria
+                    ? "No albums found"
+                    : "Search by player"}
             </Text>
           </Box>
         </HStack>
@@ -308,6 +348,8 @@ export default function SearchPage() {
               colorScheme="blue"
               type="submit"
               isDisabled={isSearchDisabled}
+              isLoading={isSearchPending}
+              loadingText="Searching"
               leftIcon={<AppIcon name="search" size={16} />}
               gridColumn={{ base: "auto", md: "3 / 4", lg: "auto" }}
               h="40px"
@@ -338,11 +380,8 @@ export default function SearchPage() {
         </Box>
 
         <Box mt={4}>
-          {isSearching ? (
-            <HStack color="gray.600" py={8} justify="center">
-              <Spinner size="md" />
-              <Text fontSize="sm">Searching</Text>
-            </HStack>
+          {isSearchPending ? (
+            <ResultListSkeleton />
           ) : (
             <>
               {errorMessage && (
@@ -351,10 +390,18 @@ export default function SearchPage() {
                   <AlertDescription>{errorMessage}</AlertDescription>
                 </Alert>
               )}
-              <ResultList
-                results={results}
-                searchParams={{ credit, song, genre, role }}
-              />
+              {results.length > 0 || !errorMessage ? (
+                <ResultList
+                  results={results}
+                  hasSearched={hasSearchCriteria}
+                  searchParams={{
+                    credit: submittedCredit,
+                    song: submittedSong,
+                    genre: submittedGenre,
+                    role,
+                  }}
+                />
+              ) : null}
             </>
           )}
         </Box>
