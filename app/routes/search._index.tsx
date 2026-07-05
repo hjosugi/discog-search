@@ -340,29 +340,14 @@ export default function SearchPage() {
   }
 
   return (
-    <Box
-      minH="100vh"
-      bg="gray.50"
-      px={{ base: 4, md: 6 }}
-      py={{ base: 5, md: 8 }}
-    >
-      <Box maxW="980px" mx="auto">
+    <Box maxW="980px" mx="auto">
         <HStack spacing={3} mb={5} align="center">
-          <Box
-            alignItems="center"
-            bg="black"
-            borderRadius="md"
-            color="white"
-            display="flex"
-            h="40px"
-            justifyContent="center"
-            w="40px"
-          >
-            <AppIcon name="disc" size={22} />
-          </Box>
+          <Text color="blue.600">
+            <AppIcon name="search" size={20} />
+          </Text>
           <Box>
             <Heading as="h1" size="md">
-              Sideman Album Finder
+              Search albums
             </Heading>
             <Text fontSize="sm" color="gray.600">
               {isSearchPending
@@ -671,7 +656,6 @@ export default function SearchPage() {
             </>
           )}
         </Box>
-      </Box>
     </Box>
   )
 }

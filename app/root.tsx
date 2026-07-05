@@ -6,8 +6,11 @@ import {
   ScrollRestoration,
   type LinksFunction,
 } from "react-router"
-import { ChakraProvider } from "@chakra-ui/react"
+import { Box, ChakraProvider } from "@chakra-ui/react"
+import type { ReactNode } from "react"
 
+import { Footer } from "./components/Footer"
+import { Header } from "./components/Header"
 import "./tailwind.css"
 
 export const links: LinksFunction = () => [
@@ -26,7 +29,7 @@ export const links: LinksFunction = () => [
   },
 ]
 
-export function Layout({ children }: { children: React.ReactNode }) {
+export function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
@@ -47,7 +50,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <ChakraProvider>
-      <Outlet />
+      <Box
+        minH="100vh"
+        bg="gray.50"
+        display="flex"
+        flexDirection="column"
+      >
+        <Header />
+        <Box
+          as="main"
+          flex="1"
+          px={{ base: 4, md: 6 }}
+          py={{ base: 5, md: 8 }}
+        >
+          <Outlet />
+        </Box>
+        <Footer />
+      </Box>
     </ChakraProvider>
   )
 }

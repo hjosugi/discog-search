@@ -170,40 +170,33 @@ export function ErrorBoundary() {
 
   return (
     <Box
-      minH="100vh"
-      bg="gray.50"
-      px={{ base: 4, md: 6 }}
-      py={{ base: 5, md: 8 }}
+      maxW="760px"
+      mx="auto"
+      bg="white"
+      borderWidth="1px"
+      borderColor="gray.200"
+      borderRadius="md"
+      p={5}
     >
-      <Box
-        maxW="760px"
-        mx="auto"
-        bg="white"
-        borderWidth="1px"
-        borderColor="gray.200"
-        borderRadius="md"
-        p={5}
-      >
-        <HStack spacing={2} mb={2}>
-          <Text color="blue.600">
-            <AppIcon name="disc" size={18} />
-          </Text>
-          <Heading as="h1" size="md">
-            Album details unavailable
-          </Heading>
-        </HStack>
-        <Text color="gray.600" fontSize="sm" mb={4}>
-          {status} / {message}
+      <HStack spacing={2} mb={2}>
+        <Text color="blue.600">
+          <AppIcon name="disc" size={18} />
         </Text>
-        <Button
-          as={RemixLink}
-          to="/search"
-          leftIcon={<AppIcon name="arrowLeft" size={15} />}
-          variant="link"
-        >
-          Back to Search
-        </Button>
-      </Box>
+        <Heading as="h1" size="md">
+          Album details unavailable
+        </Heading>
+      </HStack>
+      <Text color="gray.600" fontSize="sm" mb={4}>
+        {status} / {message}
+      </Text>
+      <Button
+        as={RemixLink}
+        to="/search"
+        leftIcon={<AppIcon name="arrowLeft" size={15} />}
+        variant="link"
+      >
+        Back to Search
+      </Button>
     </Box>
   )
 }
@@ -307,13 +300,11 @@ export default function AlbumView() {
   const coverImage = getCoverImage(release, master) || undefined
 
   return (
-    <Box
-      minH="100vh"
-      bg="gray.50"
-      px={{ base: 4, md: 6 }}
-      py={{ base: 5, md: 8 }}
-    >
-      <Box maxW="1040px" mx="auto">
+    <Box maxW="1040px" mx="auto">
+        <DetailBreadcrumb
+          albumTitle={release.title}
+          backQuery={backQuery}
+        />
         <Stack
           direction={{ base: "column", md: "row" }}
           spacing={{ base: 4, md: 6 }}
@@ -527,8 +518,40 @@ export default function AlbumView() {
         >
           Back to List
         </Button>
-      </Box>
     </Box>
+  )
+}
+
+function DetailBreadcrumb({
+  albumTitle,
+  backQuery,
+}: {
+  albumTitle: string
+  backQuery: string
+}) {
+  return (
+    <HStack
+      as="nav"
+      aria-label="Breadcrumb"
+      color="gray.600"
+      fontSize="sm"
+      mb={4}
+      spacing={2}
+    >
+      <Link
+        as={RemixLink}
+        to={`/search${backQuery ? `?${backQuery}` : ""}`}
+        color="blue.700"
+        fontWeight="semibold"
+        _hover={{ color: "blue.800", textDecoration: "underline" }}
+      >
+        Search
+      </Link>
+      <Text aria-hidden="true">&gt;</Text>
+      <Text aria-current="page" color="gray.700" noOfLines={1}>
+        {albumTitle}
+      </Text>
+    </HStack>
   )
 }
 
