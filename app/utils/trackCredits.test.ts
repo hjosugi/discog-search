@@ -3,8 +3,14 @@ import { describe, expect, it } from "vitest"
 import type { TrackItem } from "../types"
 import {
   creditAppliesToTrack,
+  dedupeCredits,
+  filterCreditsByRole,
   findBestTrackMatch,
+  getRoleFilterOptions,
   getTrackCredits,
+  isPerformanceRole,
+  roleMatchesFilter,
+  type Credit,
 } from "./trackCredits"
 
 const tracks: TrackItem[] = [
@@ -66,5 +72,73 @@ describe("getTrackCredits", () => {
       source: "release",
       isGlobal: true,
     })
+  })
+})
+
+describe("credit role helpers", () => {
+  const credits: Credit[] = [
+    {
+      name: "Tony Williams",
+      role: "Drums, Percussion",
+      source: "release",
+      isGlobal: false,
+    },
+    {
+      name: "Bobby Hutcherson",
+      role: "Vibraphone",
+      source: "release",
+      isGlobal: false,
+    },
+    {
+      name: "Miles Davis",
+      role: "Trumpet [Muted]",
+      source: "track",
+      isGlobal: false,
+    },
+    {
+      name: "Teo Macero",
+      role: "Producer",
+      source: "release",
+      isGlobal: true,
+    },
+    {
+      name: "Tony Williams",
+      role: "Drums, Percussion",
+      source: "release",
+      isGlobal: false,
+    },
+  ]
+
+  it("recognizes common performance roles beyond the old fixed chip set", () => {
+    expect(isPerformanceRole("Vibraphone")).toBe(true)
+    expect(isPerformanceRole("Trumpet")).toBe(true)
+    expect(isPerformanceRole("Producer")).toBe(false)
+  })
+
+  it("extracts unique role filter options from actual credit roles", () => {
+    expect(getRoleFilterOptions(credits)).toEqual([
+      "Drums",
+      "Percussion",
+      "Vibraphone",
+      "Trumpet",
+    ])
+  })
+
+  it("matches free-form role filters against longer Discogs role labels", () => {
+    expect(roleMatchesFilter("Electric Bass", "bass")).toBe(true)
+    expect(roleMatchesFilter("Bass", "electric bass")).toBe(true)
+    expect(roleMatchesFilter("Piano", "trumpet")).toBe(false)
+  })
+
+  it("filters and deduplicates credits using normalized names and roles", () => {
+    expect(
+      filterCreditsByRole(credits, "trumpet").map((credit) => credit.name)
+    ).toEqual(["Miles Davis"])
+    expect(dedupeCredits(credits).map((credit) => credit.name)).toEqual([
+      "Tony Williams",
+      "Bobby Hutcherson",
+      "Miles Davis",
+      "Teo Macero",
+    ])
   })
 })

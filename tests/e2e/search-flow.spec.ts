@@ -43,8 +43,27 @@ test("searches mocked Discogs results and opens album details", async ({ page })
   await expect(
     page.getByRole("heading", { name: "Nefertiti", exact: true })
   ).toBeVisible()
-  await expect(page.getByText("Tony Williams")).toBeVisible()
-  await expect(page.getByText("Drums", { exact: true })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Tony Williams" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Drums" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Trumpet" })).toBeVisible()
+  await expect(page.getByRole("link", { name: /^vocals$/i })).toHaveCount(0)
+
+  await page.getByRole("link", { name: "Tony Williams" }).click()
+
+  await expect(page).toHaveURL(/\/search\?credit=Tony\+Williams$/)
+  await expect(page.getByText("1 albums")).toBeVisible()
+
+  await page.goBack()
+
+  await expect(
+    page.getByRole("heading", { name: "Nefertiti", exact: true })
+  ).toBeVisible()
+
+  await page.getByRole("link", { name: "Trumpet" }).click()
+
+  await expect(page).toHaveURL(/role=Trumpet/)
+  await expect(page.getByRole("link", { name: "Miles Davis" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Tony Williams" })).toHaveCount(0)
 })
 
 test("restores submitted search state with browser back and forward", async ({ page }) => {

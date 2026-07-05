@@ -32,6 +32,7 @@ const release = {
   extraartists: [
     { name: "Tony Williams", role: "Drums", tracks: "A1 to A2" },
     { name: "Herbie Hancock", role: "Piano", tracks: "A1" },
+    { name: "Miles Davis", role: "Trumpet", tracks: "A1" },
     { name: "Teo Macero", role: "Producer" },
   ],
   videos: [],

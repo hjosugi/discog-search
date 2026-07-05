@@ -132,9 +132,15 @@ Release-level credits may include a `tracks` range. The detail page checks that
 range before showing the credit for a selected track.
 
 The detail page can also filter performer credits by `role`. This is a local
-filter over the loaded release metadata, so role chips like `drums`, `bass`,
-and `guitar` refine what is shown without changing the upstream Discogs search
-request.
+filter over the loaded release metadata, so role chips refine what is shown
+without changing the upstream Discogs search request. Chips are built from the
+actual roles present on the selected track, such as `Trumpet` or `Vibraphone`,
+rather than from a fixed instrument list.
+
+Credit names on the detail page link back to `/search?credit=<name>`. This lets
+users pivot from a track credit to that person's other credited releases while
+normal browser back navigation restores the previous detail page, including the
+selected track encoded in the URL or inferred from the original song query.
 
 ## Discogs Fetch Layer
 

@@ -33,8 +33,13 @@ import {
   DiscogsVideo,
 } from "~/types"
 import {
+  dedupeCredits,
+  filterCreditsByRole,
   findBestTrackMatch,
+  getRoleFilterOptions,
   getTrackCredits,
+  isPerformanceRole,
+  roleMatchesFilter,
   type Credit,
 } from "~/utils/trackCredits"
 
@@ -52,29 +57,6 @@ type LoaderData = {
 type RateLimitedResponse = {
   rateLimited?: boolean
 }
-
-const PERFORMANCE_ROLE_PATTERNS = [
-  "drum",
-  "percussion",
-  "bass",
-  "guitar",
-  "vocal",
-  "voice",
-  "piano",
-  "keyboard",
-  "synth",
-  "organ",
-  "sax",
-  "flute",
-  "trumpet",
-  "trombone",
-  "horn",
-  "violin",
-  "viola",
-  "cello",
-  "strings",
-  "performer",
-]
 
 export async function loader({
   params,
@@ -271,6 +253,7 @@ export default function AlbumView() {
   const performanceCredits = selectedCredits.filter((credit) =>
     isPerformanceRole(credit.role)
   )
+  const roleOptions = getRoleFilterOptions(performanceCredits)
   const visiblePerformanceCredits = filterCreditsByRole(
     performanceCredits,
     roleFilter
@@ -411,6 +394,7 @@ export default function AlbumView() {
               detailKind={detailKind}
               backQuery={backQuery}
               activeRole={roleFilter}
+              roles={roleOptions}
             />
             <CreditList
               credits={visiblePerformanceCredits}
@@ -560,7 +544,15 @@ function CreditList({
                 <AppIcon name="user" size={15} />
               </Text>
               <Box>
-                <Text fontWeight="bold">{credit.name}</Text>
+                <Link
+                  as={RemixLink}
+                  to={buildCreditSearchPath(credit.name)}
+                  color="blue.700"
+                  fontWeight="bold"
+                  _hover={{ color: "blue.800", textDecoration: "underline" }}
+                >
+                  {credit.name}
+                </Link>
                 <Text fontSize="sm" color="gray.700">
                   {credit.role}
                 </Text>
@@ -588,13 +580,17 @@ function RoleFilterLinks({
   detailKind,
   backQuery,
   activeRole,
+  roles,
 }: {
   detailId: string
   detailKind: "master" | "release"
   backQuery: string
   activeRole: string
+  roles: string[]
 }) {
-  const roles = ["drums", "bass", "guitar", "piano", "sax", "vocals"]
+  if (roles.length === 0 && !activeRole) {
+    return null
+  }
 
   return (
     <Wrap spacing={2} mb={3}>
@@ -602,7 +598,8 @@ function RoleFilterLinks({
         const params = new URLSearchParams(backQuery)
         params.set("role", role)
         if (detailKind === "release") params.set("kind", "release")
-        const isActive = normalize(role) === normalize(activeRole)
+        const isActive =
+          Boolean(activeRole) && roleMatchesFilter(role, activeRole)
 
         return (
           <WrapItem key={role}>
@@ -634,34 +631,9 @@ function RoleFilterLinks({
   )
 }
 
-function isPerformanceRole(role: string) {
-  const normalizedRole = role.toLowerCase()
-  return PERFORMANCE_ROLE_PATTERNS.some((pattern) =>
-    normalizedRole.includes(pattern)
-  )
-}
-
-function filterCreditsByRole(credits: Credit[], roleFilter: string) {
-  const normalizedFilter = normalize(roleFilter)
-  if (!normalizedFilter) return credits
-
-  return credits.filter((credit) => {
-    const normalizedRole = normalize(credit.role)
-    return (
-      normalizedRole.includes(normalizedFilter) ||
-      normalizedFilter.includes(normalizedRole)
-    )
-  })
-}
-
-function dedupeCredits(credits: Credit[]) {
-  const seen = new Set<string>()
-  return credits.filter((credit) => {
-    const key = `${normalize(credit.name)}-${normalize(credit.role)}-${credit.source}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+function buildCreditSearchPath(name: string) {
+  const params = new URLSearchParams({ credit: name })
+  return `/search?${params.toString()}`
 }
 
 function getMatchingVideos(videos: DiscogsVideo[], trackTitle?: string) {
