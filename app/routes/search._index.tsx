@@ -1,6 +1,13 @@
-import { useEffect, useState, type FormEvent, type MouseEvent } from "react"
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type MouseEvent,
+} from "react"
 import {
   Form,
+  Link as RouterLink,
   useFetcher,
   useLoaderData,
   useNavigation,
@@ -19,44 +26,95 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
+  Select,
+  SimpleGrid,
   Text,
+  VStack,
+  Wrap,
+  WrapItem,
 } from "@chakra-ui/react"
 
 import { AppIcon } from "../components/AppIcon"
 import { ResultList, ResultListSkeleton } from "../components/ResultList"
+import {
+  buildSearchHistoryHref,
+  buildSearchHistorySummary,
+  useSearchHistory,
+  type SearchHistoryEntry,
+  type SearchHistoryInput,
+} from "../hooks/useSearchHistory"
 import { SearchResult } from "../types"
-import { searchDiscogsAlbums } from "../utils/discogsSearch"
+import { MAX_SEARCH_PAGES, searchDiscogsAlbums } from "../utils/discogsSearch"
 import {
   DiscogsFetchError,
 } from "../utils/discogsAuthMiddleware"
-import { rankSearchResults } from "../utils/searchRanking"
+import {
+  rankSearchResults,
+  type SearchSortOption,
+} from "../utils/searchRanking"
 
 type SuggestionData = {
   suggestions: SearchResult[]
 }
 
+type SearchState = {
+  credit: string
+  song: string
+  genre: string
+  role: string
+  year: string
+  decade: string
+  country: string
+  format: string
+  sort: SearchSortOption
+  page: number
+}
+
 type LoaderData = {
   results: SearchResult[]
+  pagination: {
+    page: number
+    totalPages: number
+    totalItems: number
+    reachedPageLimit: boolean
+  }
   errorMessage?: string
 }
 
+const DEFAULT_PAGINATION = {
+  page: 1,
+  totalPages: 1,
+  totalItems: 0,
+  reachedPageLimit: false,
+}
+
+const DECADE_OPTIONS = [
+  "1940",
+  "1950",
+  "1960",
+  "1970",
+  "1980",
+  "1990",
+  "2000",
+  "2010",
+  "2020",
+]
+
+const FORMAT_OPTIONS = ["LP", "CD", "Album", "Single", '12"', '7"', "Cassette"]
+
+const SORT_OPTIONS: Array<{ value: SearchSortOption; label: string }> = [
+  { value: "relevance", label: "Relevance" },
+  { value: "year_desc", label: "Year (newest)" },
+  { value: "year_asc", label: "Year (oldest)" },
+]
+
 export async function loader({ request }: { request: Request }) {
   const url = new URL(request.url)
-  const credit = (
-    url.searchParams.get("credit") ||
-    url.searchParams.get("person") ||
-    ""
-  ).trim()
-  const song = (
-    url.searchParams.get("song") ||
-    url.searchParams.get("q") ||
-    url.searchParams.get("artist") ||
-    ""
-  ).trim()
-  const genre = (url.searchParams.get("genre") || "").trim()
+  const searchState = getSearchState(url.searchParams)
+  const { credit, song, genre, year, country, format, sort, page } = searchState
 
   if (!credit && !song && !genre) {
-    return { results: [] }
+    return { results: [], pagination: DEFAULT_PAGINATION }
   }
 
   try {
@@ -64,15 +122,24 @@ export async function loader({ request }: { request: Request }) {
       credit,
       song,
       genre,
+      year,
+      country,
+      format,
+      page,
     })
-    const results = rankSearchResults(searchResults.results, {
-      credit,
-      song,
-      genre,
-    })
+    const results = rankSearchResults(
+      filterResultsByDecade(searchResults.results, searchState),
+      {
+        credit,
+        song,
+        genre,
+      },
+      { sort }
+    )
 
     return {
       results,
+      pagination: searchResults.pagination,
       errorMessage: searchResults.rateLimited
         ? "Discogs is cooling down after rate limiting. Cached results will be used when available."
         : undefined,
@@ -84,37 +151,67 @@ export async function loader({ request }: { request: Request }) {
 
     return {
       results: [],
+      pagination: DEFAULT_PAGINATION,
       errorMessage: getSearchErrorMessage(error),
     }
   }
 }
 
 export default function SearchPage() {
-  const { results, errorMessage } = useLoaderData<LoaderData>()
+  const { results, pagination, errorMessage } = useLoaderData<LoaderData>()
   const [searchParams] = useSearchParams()
   const navigation = useNavigation()
   const submit = useSubmit()
   const suggestionsFetcher = useFetcher<SuggestionData>()
-
-  const submittedCredit = (
-    searchParams.get("credit") ||
-    searchParams.get("person") ||
-    ""
-  ).trim()
-  const submittedSong = (
-    searchParams.get("song") ||
-    searchParams.get("q") ||
-    searchParams.get("artist") ||
-    ""
-  ).trim()
-  const submittedGenre = (searchParams.get("genre") || "").trim()
-  const submittedRole = (searchParams.get("role") || "").trim()
+  const submittedState = getSearchState(searchParams)
+  const {
+    credit: submittedCredit,
+    song: submittedSong,
+    genre: submittedGenre,
+    role: submittedRole,
+    year: submittedYear,
+    decade: submittedDecade,
+    country: submittedCountry,
+    format: submittedFormat,
+    sort: submittedSort,
+  } = submittedState
 
   const [credit, setCredit] = useState(() => submittedCredit)
   const [song, setSong] = useState(() => submittedSong)
   const [genre, setGenre] = useState(() => submittedGenre)
   const [role, setRole] = useState(() => submittedRole)
+  const [year, setYear] = useState(() => submittedYear)
+  const [decade, setDecade] = useState(() => submittedDecade)
+  const [country, setCountry] = useState(() => submittedCountry)
+  const [format, setFormat] = useState(() => submittedFormat)
+  const [sort, setSort] = useState<SearchSortOption>(() => submittedSort)
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false)
+  const activeHistorySearch = useMemo<SearchHistoryInput | null>(() => {
+    if (!submittedCredit && !submittedSong && !submittedGenre) return null
+
+    return {
+      credit: submittedCredit,
+      song: submittedSong,
+      genre: submittedGenre,
+      role: submittedRole,
+      year: submittedYear,
+      decade: submittedDecade,
+      country: submittedCountry,
+      format: submittedFormat,
+      sort: submittedSort,
+    }
+  }, [
+    submittedCountry,
+    submittedCredit,
+    submittedDecade,
+    submittedFormat,
+    submittedGenre,
+    submittedRole,
+    submittedSong,
+    submittedSort,
+    submittedYear,
+  ])
+  const searchHistory = useSearchHistory(activeHistorySearch)
 
   const hasSearchCriteria = Boolean(
     submittedCredit || submittedSong || submittedGenre
@@ -126,13 +223,34 @@ export default function SearchPage() {
   const suggestions = suggestionsFetcher.data?.suggestions || []
   const showSuggestions =
     isSuggestionOpen && song.trim().length >= 3 && suggestions.length > 0
+  const resultSearchParams = getResultSearchParams(submittedState)
+  const headingSummary = getHeadingSummary(
+    results.length,
+    pagination.totalItems,
+    hasSearchCriteria
+  )
 
   useEffect(() => {
     setCredit(submittedCredit)
     setSong(submittedSong)
     setGenre(submittedGenre)
     setRole(submittedRole)
-  }, [submittedCredit, submittedGenre, submittedRole, submittedSong])
+    setYear(submittedYear)
+    setDecade(submittedDecade)
+    setCountry(submittedCountry)
+    setFormat(submittedFormat)
+    setSort(submittedSort)
+  }, [
+    submittedCountry,
+    submittedCredit,
+    submittedDecade,
+    submittedFormat,
+    submittedGenre,
+    submittedRole,
+    submittedSong,
+    submittedSort,
+    submittedYear,
+  ])
 
   useEffect(() => {
     const query = song.trim()
@@ -156,10 +274,22 @@ export default function SearchPage() {
     const nextSong = song.trim()
     const nextGenre = genre.trim()
     const nextRole = role.trim()
+    const nextYear = year.trim()
+    const nextDecade = decade.trim()
+    const nextCountry = country.trim()
+    const nextFormat = format.trim()
     if (nextCredit) params.append("credit", nextCredit)
     if (nextSong) params.append("song", nextSong)
     if (nextGenre) params.append("genre", nextGenre)
     if (nextRole) params.append("role", nextRole)
+    if (nextYear) {
+      params.append("year", nextYear)
+    } else if (nextDecade) {
+      params.append("decade", nextDecade)
+    }
+    if (nextCountry) params.append("country", nextCountry)
+    if (nextFormat) params.append("format", nextFormat)
+    if (sort !== "relevance") params.append("sort", sort)
     submit(params, { action: "/search", method: "get" })
   }
 
@@ -169,6 +299,14 @@ export default function SearchPage() {
     if (credit) params.set("credit", credit)
     if (genre) params.set("genre", genre)
     if (role) params.set("role", role)
+    if (year) {
+      params.set("year", year)
+    } else if (decade) {
+      params.set("decade", decade)
+    }
+    if (country) params.set("country", country)
+    if (format) params.set("format", format)
+    if (sort !== "relevance") params.set("sort", sort)
     if (suggestion.type === "release") params.set("kind", "release")
     return `/search/${suggestion.id}?${params.toString()}`
   }
@@ -201,11 +339,7 @@ export default function SearchPage() {
             <Text fontSize="sm" color="gray.600">
               {isSearchPending
                 ? "Searching albums"
-                : results.length > 0
-                  ? `${results.length} albums`
-                  : hasSearchCriteria
-                    ? "No albums found"
-                    : "Search by player"}
+                : headingSummary}
             </Text>
           </Box>
         </HStack>
@@ -366,6 +500,89 @@ export default function SearchPage() {
             </Button>
           </Grid>
 
+          <SimpleGrid
+            columns={{ base: 1, md: 4 }}
+            gap={2}
+            mt={3}
+          >
+            <Input
+              aria-label="Year"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="Year"
+              value={year}
+              onChange={(event) => {
+                setYear(event.target.value)
+                if (event.target.value.trim()) setDecade("")
+              }}
+              bg="white"
+            />
+            <Input
+              aria-label="Country"
+              placeholder="Country"
+              value={country}
+              onChange={(event) => setCountry(event.target.value)}
+              list="country-suggestions"
+              bg="white"
+            />
+            <Select
+              aria-label="Format"
+              value={format}
+              onChange={(event) => setFormat(event.target.value)}
+              bg="white"
+            >
+              <option value="">Any format</option>
+              {FORMAT_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label="Sort"
+              value={sort}
+              onChange={(event) => setSort(getSortOption(event.target.value))}
+              bg="white"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </SimpleGrid>
+
+          <Wrap mt={3} spacing={2}>
+            <WrapItem>
+              <Button
+                type="button"
+                size="sm"
+                variant={!decade ? "solid" : "outline"}
+                colorScheme={!decade ? "blue" : "gray"}
+                onClick={() => setDecade("")}
+              >
+                Any decade
+              </Button>
+            </WrapItem>
+            {DECADE_OPTIONS.map((option) => (
+              <WrapItem key={option}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={decade === option ? "solid" : "outline"}
+                  colorScheme={decade === option ? "blue" : "gray"}
+                  aria-pressed={decade === option}
+                  onClick={() => {
+                    setYear("")
+                    setDecade(decade === option ? "" : option)
+                  }}
+                >
+                  {option}s
+                </Button>
+              </WrapItem>
+            ))}
+          </Wrap>
+
           <datalist id="genre-suggestions">
             <option value="Jazz" />
             <option value="Rock" />
@@ -382,7 +599,21 @@ export default function SearchPage() {
             <option value="saxophone" />
             <option value="vocals" />
           </datalist>
+          <datalist id="country-suggestions">
+            <option value="US" />
+            <option value="UK" />
+            <option value="Japan" />
+            <option value="France" />
+            <option value="Germany" />
+            <option value="Italy" />
+          </datalist>
         </Box>
+
+        <SearchHistoryPanel
+          entries={searchHistory.entries}
+          onClear={searchHistory.clearEntries}
+          onRemove={searchHistory.removeEntry}
+        />
 
         <Box mt={4}>
           {isSearchPending ? (
@@ -399,11 +630,13 @@ export default function SearchPage() {
                 <ResultList
                   results={results}
                   hasSearched={hasSearchCriteria}
-                  searchParams={{
-                    credit: submittedCredit,
-                    song: submittedSong,
-                    genre: submittedGenre,
-                    role,
+                  searchParams={resultSearchParams}
+                  pagination={{
+                    ...pagination,
+                    nextPageHref: buildSearchPageHref(
+                      submittedState,
+                      pagination.page + 1
+                    ),
                   }}
                 />
               ) : null}
@@ -413,6 +646,186 @@ export default function SearchPage() {
       </Box>
     </Box>
   )
+}
+
+function SearchHistoryPanel({
+  entries,
+  onClear,
+  onRemove,
+}: {
+  entries: SearchHistoryEntry[]
+  onClear: () => void
+  onRemove: (id: string) => void
+}) {
+  if (entries.length === 0) return null
+
+  return (
+    <Box
+      bg="white"
+      borderWidth="1px"
+      borderColor="gray.200"
+      borderRadius="md"
+      boxShadow="sm"
+      mt={3}
+      p={3}
+    >
+      <HStack justify="space-between" mb={2} spacing={3}>
+        <HStack color="gray.700" spacing={2}>
+          <AppIcon name="clock" size={15} />
+          <Text fontSize="sm" fontWeight="semibold">
+            Recent Searches
+          </Text>
+        </HStack>
+        <Button size="xs" variant="ghost" onClick={onClear}>
+          Clear
+        </Button>
+      </HStack>
+      <VStack align="stretch" spacing={1}>
+        {entries.map((entry, index) => {
+          const summary = buildSearchHistorySummary(entry)
+
+          return (
+            <HStack key={entry.id} spacing={2}>
+              <Button
+                as={RouterLink}
+                to={buildSearchHistoryHref(entry)}
+                justifyContent="flex-start"
+                leftIcon={<AppIcon name="search" size={14} />}
+                minW={0}
+                size="sm"
+                variant="ghost"
+                whiteSpace="normal"
+                w="100%"
+              >
+                <Text as="span" noOfLines={1}>
+                  {summary}
+                </Text>
+              </Button>
+              <Button
+                aria-label={`Delete recent item ${index + 1}`}
+                flexShrink={0}
+                onClick={() => onRemove(entry.id)}
+                size="sm"
+                variant="ghost"
+              >
+                <AppIcon name="x" size={14} />
+              </Button>
+            </HStack>
+          )
+        })}
+      </VStack>
+    </Box>
+  )
+}
+
+function getSearchState(searchParams: URLSearchParams): SearchState {
+  const year = getYearOption(searchParams.get("year"))
+
+  return {
+    credit: (
+      searchParams.get("credit") ||
+      searchParams.get("person") ||
+      ""
+    ).trim(),
+    song: (
+      searchParams.get("song") ||
+      searchParams.get("q") ||
+      searchParams.get("artist") ||
+      ""
+    ).trim(),
+    genre: (searchParams.get("genre") || "").trim(),
+    role: (searchParams.get("role") || "").trim(),
+    year,
+    decade: year ? "" : getDecadeOption(searchParams.get("decade")),
+    country: (searchParams.get("country") || "").trim(),
+    format: (searchParams.get("format") || "").trim(),
+    sort: getSortOption(searchParams.get("sort")),
+    page: getPageOption(searchParams.get("page")),
+  }
+}
+
+function getResultSearchParams(searchState: SearchState) {
+  return Object.fromEntries(buildSearchParams(searchState)) as {
+    [key: string]: string
+  }
+}
+
+function buildSearchPageHref(searchState: SearchState, page: number) {
+  const params = buildSearchParams({ ...searchState, page })
+  return `/search?${params.toString()}`
+}
+
+function buildSearchParams(searchState: SearchState) {
+  const params = new URLSearchParams()
+
+  if (searchState.credit) params.set("credit", searchState.credit)
+  if (searchState.song) params.set("song", searchState.song)
+  if (searchState.genre) params.set("genre", searchState.genre)
+  if (searchState.role) params.set("role", searchState.role)
+  if (searchState.year) {
+    params.set("year", searchState.year)
+  } else if (searchState.decade) {
+    params.set("decade", searchState.decade)
+  }
+  if (searchState.country) params.set("country", searchState.country)
+  if (searchState.format) params.set("format", searchState.format)
+  if (searchState.sort !== "relevance") params.set("sort", searchState.sort)
+  if (searchState.page > 1) params.set("page", String(searchState.page))
+
+  return params
+}
+
+function filterResultsByDecade(results: SearchResult[], searchState: SearchState) {
+  if (!searchState.decade || searchState.year) return results
+
+  const decadeStart = Number(searchState.decade)
+  if (!Number.isFinite(decadeStart)) return results
+  const decadeEnd = decadeStart + 9
+
+  return results.filter((result) => {
+    const year = Number(result.year)
+    return Number.isFinite(year) && year >= decadeStart && year <= decadeEnd
+  })
+}
+
+function getHeadingSummary(
+  resultsCount: number,
+  totalItems: number,
+  hasSearchCriteria: boolean
+) {
+  if (resultsCount > 0) {
+    const total = Math.max(resultsCount, totalItems)
+    return resultsCount === total
+      ? `${formatCount(resultsCount)} albums`
+      : `${formatCount(resultsCount)} of ${formatCount(total)} albums`
+  }
+
+  return hasSearchCriteria ? "No albums found" : "Search by player"
+}
+
+function getSortOption(value: string | null): SearchSortOption {
+  return value === "year_desc" || value === "year_asc" ? value : "relevance"
+}
+
+function getPageOption(value: string | null) {
+  const page = Number(value || 1)
+  return Number.isFinite(page) && page > 0
+    ? Math.min(Math.floor(page), MAX_SEARCH_PAGES)
+    : 1
+}
+
+function getYearOption(value: string | null) {
+  const year = (value || "").trim()
+  return /^\d{4}$/.test(year) ? year : ""
+}
+
+function getDecadeOption(value: string | null) {
+  const decade = (value || "").trim().replace(/s$/i, "")
+  return DECADE_OPTIONS.includes(decade) ? decade : ""
+}
+
+function formatCount(value: number) {
+  return value.toLocaleString("en-US")
 }
 
 function getSearchErrorMessage(error: unknown) {

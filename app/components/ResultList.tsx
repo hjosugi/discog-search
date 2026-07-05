@@ -1,6 +1,7 @@
 import {
   Badge,
   Box,
+  Button,
   HStack,
   Heading,
   Image,
@@ -20,10 +21,18 @@ export function ResultList({
   results,
   hasSearched,
   searchParams,
+  pagination,
 }: {
   results: SearchResult[]
   hasSearched: boolean
   searchParams: { [key: string]: string }
+  pagination?: {
+    page: number
+    totalPages: number
+    totalItems: number
+    reachedPageLimit: boolean
+    nextPageHref: string
+  }
 }) {
   if (results.length === 0) {
     return hasSearched ? (
@@ -35,6 +44,9 @@ export function ResultList({
 
   return (
     <Box mt={5}>
+      {pagination ? (
+        <PaginationSummary resultsCount={results.length} pagination={pagination} />
+      ) : null}
       {results.map((result) => {
         const summary = buildSummary(result)
         const queryString = buildSearchParams(searchParams, result)
@@ -113,6 +125,7 @@ export function ResultList({
           </Box>
         )
       })}
+      {pagination ? <PaginationFooter pagination={pagination} /> : null}
     </Box>
   )
 }
@@ -308,6 +321,85 @@ function buildSearchParams(
   return params.toString()
 }
 
+function PaginationSummary({
+  resultsCount,
+  pagination,
+}: {
+  resultsCount: number
+  pagination: {
+    page: number
+    totalItems: number
+  }
+}) {
+  const totalItems = Math.max(pagination.totalItems, resultsCount)
+
+  if (pagination.page === 1 && totalItems === resultsCount) {
+    return null
+  }
+
+  return (
+    <HStack justify="space-between" align="center" mb={3} spacing={3}>
+      <Text color="gray.600" fontSize="sm">
+        Showing {formatCount(resultsCount)} of {formatCount(totalItems)} albums
+      </Text>
+      {pagination.page > 1 ? (
+        <Badge colorScheme="blue" textTransform="none">
+          {pagination.page} pages loaded
+        </Badge>
+      ) : null}
+    </HStack>
+  )
+}
+
+function PaginationFooter({
+  pagination,
+}: {
+  pagination: {
+    page: number
+    totalPages: number
+    totalItems: number
+    reachedPageLimit: boolean
+    nextPageHref: string
+  }
+}) {
+  const hasNextPage =
+    pagination.page < pagination.totalPages && !pagination.reachedPageLimit
+
+  if (!hasNextPage && !pagination.reachedPageLimit) {
+    return null
+  }
+
+  return (
+    <Box
+      bg="white"
+      borderWidth="1px"
+      borderColor="gray.200"
+      borderRadius="md"
+      mt={4}
+      p={3}
+      textAlign="center"
+    >
+      {hasNextPage ? (
+        <Button
+          as={Link}
+          to={pagination.nextPageHref}
+          colorScheme="blue"
+          leftIcon={<AppIcon name="search" size={15} />}
+          variant="outline"
+        >
+          Load more
+        </Button>
+      ) : (
+        <Text color="gray.600" fontSize="sm">
+          Page limit reached before all {formatCount(pagination.totalItems)}
+          {" "}
+          Discogs matches were loaded.
+        </Text>
+      )}
+    </Box>
+  )
+}
+
 function buildSearchSummary(searchParams: { [key: string]: string }) {
   const criteria = [
     searchParams.credit ? `credit "${searchParams.credit}"` : "",
@@ -338,7 +430,9 @@ function buildRelaxedSearchHref(
   const nextParams = new URLSearchParams()
 
   Object.entries(searchParams).forEach(([key, value]) => {
-    if (key !== omittedKey && value) nextParams.set(key, value)
+    if (key !== omittedKey && key !== "page" && value) {
+      nextParams.set(key, value)
+    }
   })
 
   if (
@@ -369,4 +463,8 @@ function buildTags(result: SearchResult) {
 
 function firstValue(values?: string[]) {
   return values?.find(Boolean)
+}
+
+function formatCount(value: number) {
+  return value.toLocaleString("en-US")
 }

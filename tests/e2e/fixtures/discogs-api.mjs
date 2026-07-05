@@ -50,14 +50,27 @@ const server = http.createServer(async (request, response) => {
       await delay(900)
     }
 
+    if (isLargeSearch(url.searchParams)) {
+      return sendJson(response, buildLargeSearchResponse(url.searchParams))
+    }
+
+    if (isFilterSearch(url.searchParams)) {
+      return sendJson(response, buildFilterSearchResponse(url.searchParams))
+    }
+
     return sendJson(response, {
-      pagination: { page: 1, pages: 1 },
+      pagination: { page: 1, pages: 1, items: isEmptySearch(url.searchParams) ? 0 : 1, per_page: 100 },
       results: isEmptySearch(url.searchParams) ? [] : [searchResult],
     })
   }
 
   if (url.pathname === "/releases/1001") {
     return sendJson(response, release)
+  }
+
+  const releaseMatch = url.pathname.match(/^\/releases\/(\d+)$/)
+  if (releaseMatch) {
+    return sendJson(response, buildRelease(Number(releaseMatch[1])))
   }
 
   sendJson(response, { message: "Not found" }, 404)
@@ -83,11 +96,148 @@ function isSlowSearch(searchParams) {
   return getSearchText(searchParams).includes("slow search")
 }
 
+function isLargeSearch(searchParams) {
+  return getSearchText(searchParams).includes("large search")
+}
+
+function isFilterSearch(searchParams) {
+  return getSearchText(searchParams).includes("filter search")
+}
+
 function getSearchText(searchParams) {
   return ["credit", "track", "q", "genre"]
     .map((key) => searchParams.get(key) || "")
     .join(" ")
     .toLowerCase()
+}
+
+function buildLargeSearchResponse(searchParams) {
+  const page = getPage(searchParams)
+  const totalItems = 205
+  const pages = 3
+  const start = (page - 1) * 100 + 1
+  const size = page === pages ? 5 : 100
+
+  return {
+    pagination: { page, pages, items: totalItems, per_page: 100 },
+    results: Array.from({ length: size }, (_, index) => {
+      const number = start + index
+      return {
+        id: 2000 + number - 1,
+        title: `Large Search Album ${number}`,
+        artist: "Large Search Ensemble",
+        thumb: "",
+        country: "US",
+        year: String(1950 + (number % 70)),
+        format: ["Album", "LP"],
+        label: ["Mock"],
+        type: "release",
+        genre: ["Jazz"],
+        style: ["Post Bop"],
+        catno: `MOCK-${number}`,
+      }
+    }),
+  }
+}
+
+function buildFilterSearchResponse(searchParams) {
+  const results = [
+    {
+      id: 3001,
+      title: "1971 Filter Search Album",
+      artist: "Filter Search Ensemble",
+      thumb: "",
+      country: "US",
+      year: "1971",
+      format: ["Album", "LP"],
+      label: ["Mock"],
+      type: "release",
+      genre: ["Jazz"],
+      style: ["Fusion"],
+      catno: "FILTER-1971",
+    },
+    {
+      id: 3002,
+      title: "1984 Filter Search Album",
+      artist: "Filter Search Ensemble",
+      thumb: "",
+      country: "US",
+      year: "1984",
+      format: ["Album", "CD"],
+      label: ["Mock"],
+      type: "release",
+      genre: ["Jazz"],
+      style: ["Fusion"],
+      catno: "FILTER-1984",
+    },
+    {
+      id: 3003,
+      title: "1964 Filter Search Album",
+      artist: "Filter Search Ensemble",
+      thumb: "",
+      country: "Japan",
+      year: "1964",
+      format: ["Album", "LP"],
+      label: ["Mock"],
+      type: "release",
+      genre: ["Jazz"],
+      style: ["Post Bop"],
+      catno: "FILTER-1964",
+    },
+  ].filter((result) => {
+    const year = searchParams.get("year")
+    const country = searchParams.get("country")
+    const format = searchParams.get("format")
+
+    if (year && result.year !== year) return false
+    if (country && result.country.toLowerCase() !== country.toLowerCase()) {
+      return false
+    }
+    if (
+      format &&
+      !result.format.some(
+        (item) => item.toLowerCase() === format.toLowerCase()
+      )
+    ) {
+      return false
+    }
+
+    return true
+  })
+
+  return {
+    pagination: { page: 1, pages: 1, items: results.length, per_page: 100 },
+    results,
+  }
+}
+
+function buildRelease(id) {
+  const number = id >= 2000 && id < 3000 ? id - 1999 : id
+  const title =
+    id >= 2000 && id < 3000
+      ? `Large Search Album ${number}`
+      : id === 3001
+        ? "1971 Filter Search Album"
+        : id === 3002
+          ? "1984 Filter Search Album"
+          : "1964 Filter Search Album"
+
+  return {
+    id,
+    title,
+    year: Number(title.slice(0, 4)) || 1971,
+    artists_sort: "Mock Artist",
+    artists: [{ name: "Mock Artist" }],
+    uri: `https://www.discogs.com/release/${id}`,
+    tracklist: [{ position: "A1", type_: "track", title }],
+    extraartists: [{ name: "Tony Williams", role: "Drums", tracks: "A1" }],
+    videos: [],
+  }
+}
+
+function getPage(searchParams) {
+  const value = Number(searchParams.get("page") || 1)
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 1
 }
 
 function delay(ms) {

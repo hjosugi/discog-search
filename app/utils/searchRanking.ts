@@ -1,13 +1,20 @@
 import { SearchResult } from "../types"
 
+export type SearchSortOption = "relevance" | "year_desc" | "year_asc"
+
 export function rankSearchResults(
   results: SearchResult[],
   filters: {
     credit: string
     song: string
     genre: string
-  }
+  },
+  options: {
+    sort?: SearchSortOption
+  } = {}
 ) {
+  const sort = options.sort || "relevance"
+
   return dedupeResults(results)
     .map((result) => ({
       result,
@@ -15,6 +22,21 @@ export function rankSearchResults(
     }))
     .filter(({ score }) => score > -30)
     .sort((a, b) => {
+      if (sort === "year_desc") {
+        return (
+          getYearValue(b.result.year) - getYearValue(a.result.year) ||
+          b.score - a.score
+        )
+      }
+
+      if (sort === "year_asc") {
+        return (
+          getSortableYearValue(a.result.year) -
+            getSortableYearValue(b.result.year) ||
+          b.score - a.score
+        )
+      }
+
       if (b.score !== a.score) return b.score - a.score
       return getYearValue(b.result.year) - getYearValue(a.result.year)
     })
@@ -138,4 +160,9 @@ function getPrimaryArtist(title: string) {
 function getYearValue(year?: string) {
   const value = Number(year)
   return Number.isFinite(value) ? value : 0
+}
+
+function getSortableYearValue(year?: string) {
+  const value = Number(year)
+  return Number.isFinite(value) && value > 0 ? value : Number.MAX_SAFE_INTEGER
 }

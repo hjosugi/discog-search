@@ -52,6 +52,9 @@ export interface SearchParam
   credit?: string | null
   track?: string | null
   genre?: string | null
+  year?: string | null
+  country?: string | null
+  format?: string | null
   type: "master" | "release"
   per_page: number
 }

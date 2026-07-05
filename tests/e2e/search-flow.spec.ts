@@ -66,6 +66,116 @@ test("searches mocked Discogs results and opens album details", async ({ page })
   await expect(page.getByRole("link", { name: "Tony Williams" })).toHaveCount(0)
 })
 
+test("loads additional result pages and preserves list state", async ({ page }) => {
+  await page.goto("/search")
+
+  await page
+    .getByPlaceholder("Credit / performer, e.g. Tony Williams")
+    .fill("Large Search")
+  await page.getByRole("button", { name: "Search" }).click()
+
+  await expect(page.getByText("Showing 100 of 205 albums")).toBeVisible()
+  await expect(page.getByRole("link", { name: "Load more" })).toBeVisible()
+
+  await page.getByRole("link", { name: "Load more" }).click()
+
+  await expect(page).toHaveURL(/page=2/)
+  await expect(page.getByText("Showing 200 of 205 albums")).toBeVisible()
+  await expect(page.getByText("Large Search Album 150")).toBeVisible()
+
+  await page.getByText("Large Search Album 150").click()
+
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Large Search Album 150" })
+  ).toBeVisible()
+
+  await page.getByRole("link", { name: "Back to List" }).click()
+
+  await expect(page).toHaveURL(/credit=Large\+Search/)
+  await expect(page).toHaveURL(/page=2/)
+  await expect(page.getByText("Showing 200 of 205 albums")).toBeVisible()
+})
+
+test("keeps filters and sort order in the URL", async ({ page }) => {
+  await page.goto("/search")
+
+  await page
+    .getByPlaceholder("Credit / performer, e.g. Tony Williams")
+    .fill("Filter Search")
+  await page.getByRole("button", { name: "1970s" }).click()
+  await page.getByLabel("Country").fill("US")
+  await page.getByLabel("Format").selectOption("LP")
+  await page.getByLabel("Sort").selectOption("year_asc")
+  await page.getByRole("button", { name: "Search", exact: true }).click()
+
+  await expect(page).toHaveURL(/decade=1970/)
+  await expect(page).toHaveURL(/country=US/)
+  await expect(page).toHaveURL(/format=LP/)
+  await expect(page).toHaveURL(/sort=year_asc/)
+  await expect(page.getByText("1971 Filter Search Album")).toBeVisible()
+  await expect(page.getByText("1984 Filter Search Album")).toHaveCount(0)
+
+  await page.getByLabel("Year").fill("1984")
+  await page.getByLabel("Format").selectOption("CD")
+  await page.getByRole("button", { name: "Search", exact: true }).click()
+
+  await expect(page).toHaveURL(/year=1984/)
+  expect(new URL(page.url()).searchParams.get("decade")).toBeNull()
+  await expect(page.getByText("1984 Filter Search Album")).toBeVisible()
+
+  await page.reload()
+
+  await expect(page.getByLabel("Year")).toHaveValue("1984")
+  await expect(page.getByLabel("Format")).toHaveValue("CD")
+  await expect(page.getByLabel("Sort")).toHaveValue("year_asc")
+})
+
+test("saves recent searches and reruns a saved search", async ({ page }) => {
+  await page.goto("/search")
+
+  await page
+    .getByPlaceholder("Credit / performer, e.g. Tony Williams")
+    .fill("Tony Williams")
+  await page
+    .getByPlaceholder("Song / track, e.g. Night in Tunisia")
+    .fill("Nefertiti")
+  await page
+    .getByPlaceholder("Instrument / role filter, e.g. drums")
+    .fill("drums")
+  await page.getByRole("button", { name: "Search" }).click()
+
+  const tonyHistoryLink = page.getByRole("link", {
+    name: /credit "Tony Williams".*song "Nefertiti".*role "drums"/,
+  })
+
+  await expect(tonyHistoryLink).toBeVisible()
+
+  await page
+    .getByPlaceholder("Credit / performer, e.g. Tony Williams")
+    .fill("No Match")
+  await page.getByRole("button", { name: "Search" }).click()
+  await expect(
+    page.getByRole("heading", {
+      name: /No albums found for credit "No Match"/,
+    })
+  ).toBeVisible()
+
+  await tonyHistoryLink.click()
+
+  await expect(page).toHaveURL(/credit=Tony\+Williams/)
+  await expect(page).toHaveURL(/song=Nefertiti/)
+  await expect(page).toHaveURL(/role=drums/)
+  await expect(page.getByText("Miles Davis - Nefertiti")).toBeVisible()
+
+  await page
+    .getByRole("button", { name: "Delete recent item 1" })
+    .click()
+  await expect(tonyHistoryLink).toHaveCount(0)
+
+  await page.getByRole("button", { name: "Clear" }).click()
+  await expect(page.getByText("Recent Searches")).toHaveCount(0)
+})
+
 test("restores submitted search state with browser back and forward", async ({ page }) => {
   await page.goto("/search")
 

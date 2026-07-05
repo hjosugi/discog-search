@@ -82,4 +82,32 @@ describe("rankSearchResults", () => {
 
     expect(ranked[0]?.id).toBe(2)
   })
+
+  it("sorts matching results by newest year when requested", () => {
+    const ranked = rankSearchResults(
+      [
+        result({ id: 1, title: "Album 1968", year: "1968" }),
+        result({ id: 2, title: "Album 1972", year: "1972" }),
+        result({ id: 3, title: "Album 1959", year: "1959" }),
+      ],
+      { credit: "", song: "", genre: "" },
+      { sort: "year_desc" }
+    )
+
+    expect(ranked.map((item) => item.id)).toEqual([2, 1, 3])
+  })
+
+  it("sorts matching results by oldest year with undated results last", () => {
+    const ranked = rankSearchResults(
+      [
+        result({ id: 1, title: "Album 1968", year: "1968" }),
+        result({ id: 2, title: "Album without year" }),
+        result({ id: 3, title: "Album 1959", year: "1959" }),
+      ],
+      { credit: "", song: "", genre: "" },
+      { sort: "year_asc" }
+    )
+
+    expect(ranked.map((item) => item.id)).toEqual([3, 1, 2])
+  })
 })

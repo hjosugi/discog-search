@@ -4,12 +4,17 @@
 
 The main search page lives in `app/routes/search._index.tsx`.
 
-The UI uses three inputs:
+The UI uses these search inputs:
 
 - `credit`: a performer, sideman, producer, arranger, or other Discogs credit.
 - `song`: a track title.
 - `genre`: an optional broad Discogs genre filter.
 - `role`: an optional local instrument/role filter such as `drums` or `bass`.
+- `year`: an exact Discogs release year.
+- `decade`: a local decade refinement over fetched result pages.
+- `country`: a Discogs country filter.
+- `format`: a Discogs format filter such as `LP` or `CD`.
+- `sort`: result ordering, either relevance or year.
 
 The URL uses `credit` as the primary query parameter. Older `person` links are
 still accepted as a fallback so existing links keep working.
@@ -27,6 +32,9 @@ search is implemented through Discogs database search filters:
 - `credit=<name>` for people credited on a release or master.
 - `track=<title>` for track title matching.
 - `genre=<genre>` for genre filtering.
+- `year=<year>` for exact release year filtering.
+- `country=<country>` for country filtering.
+- `format=<format>` for format filtering.
 - `type=release` when `credit` or `song` is present.
 
 There is intentionally no `personnel=<name>` request in the codebase. Discogs
@@ -38,6 +46,9 @@ as the verification step.
 The `role` field is not sent to Discogs search because the public search API
 does not provide a reliable instrument-role filter. It is carried through the
 URL and applied on the detail page against `extraartists.role`.
+
+The `decade` field is also local. Exact `year` is sent to Discogs, while decade
+filters the result pages already loaded by the search route.
 
 Discogs' public data model is release-oriented. The search API can filter by
 `credit`, but it does not answer "who played drums on this exact track?" in one
@@ -58,6 +69,13 @@ Tony Williams appeared on as a sideman?"
 The request builder is centralized in `app/utils/discogsSearch.ts`. It first
 tries a precise `track` search. If that returns no results for a song search, it
 falls back to `q=<song>` because Discogs track metadata can be uneven.
+
+Search pagination is explicit and URL-backed through `page=<n>`. The route asks
+`searchDiscogsAlbums()` to fetch cumulative result pages from page 1 through the
+requested page, then renders a "Load more" link for the next page when Discogs
+reports more results. The utility caps requested pages to avoid accidental bulk
+fetching against the Discogs rate limit. Discogs `pagination.items` is surfaced
+as the total match count in the UI.
 
 Example candidate search requests:
 
@@ -84,7 +102,7 @@ app/routes/search._index.tsx
     -> rankSearchResults()
 
 app/components/ResultList.tsx
-  -> /search/:Id?kind=release&credit=...&song=...&role=...
+  -> /search/:Id?kind=release&credit=...&song=...&role=...&page=...
 
 app/routes/search.$Id.tsx
   loader()
@@ -98,6 +116,12 @@ app/routes/search.$Id.tsx
 This split keeps the first page fast and broad, while the detail page does the
 slower and more specific track/role inspection.
 
+Recent searches are client-only state in `app/hooks/useSearchHistory.ts`.
+Search criteria are loaded from and written to `localStorage` after hydration,
+so the server render and first client render both start without history UI.
+History entries store the URL-runnable criteria, dedupe identical searches by
+moving them to the front, and keep the latest 10 entries.
+
 ## Ranking
 
 `app/utils/searchRanking.ts` deduplicates similar releases and scores results by:
@@ -109,6 +133,10 @@ slower and more specific track/role inspection.
 
 This ranking is deliberately lightweight. It improves default ordering without
 pretending Discogs credits are perfectly normalized.
+
+When `sort=year_desc` or `sort=year_asc` is present, the same deduped and
+scored candidate set is ordered by year instead of relevance score. Relevance
+score is still used as a tie-breaker.
 
 For sideman discovery, the ranking also lowers results where the searched
 credit appears to be the primary artist in the result title. This helps surface
