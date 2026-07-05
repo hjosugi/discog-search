@@ -14,6 +14,13 @@ test("searches mocked Discogs results and opens album details", async ({ page })
   await page.goto("/search")
   await expect(page.getByRole("heading", { name: "Sideman Album Finder" })).toBeVisible()
   await page.waitForLoadState("networkidle")
+  const documentSearchRequests: string[] = []
+  page.on("request", (request) => {
+    const url = new URL(request.url())
+    if (request.resourceType() === "document" && url.pathname === "/search") {
+      documentSearchRequests.push(request.url())
+    }
+  })
 
   await page
     .getByPlaceholder("Credit / performer, e.g. Tony Williams")
@@ -24,6 +31,7 @@ test("searches mocked Discogs results and opens album details", async ({ page })
   await page.getByRole("button", { name: "Search" }).click()
 
   await expect(page).toHaveURL(/credit=Tony\+Williams/)
+  expect(documentSearchRequests).toEqual([])
   await expect(page.getByText("1 albums")).toBeVisible()
   await expect(page.getByText("Miles Davis - Nefertiti")).toBeVisible()
 
@@ -37,6 +45,55 @@ test("searches mocked Discogs results and opens album details", async ({ page })
   ).toBeVisible()
   await expect(page.getByText("Tony Williams")).toBeVisible()
   await expect(page.getByText("Drums", { exact: true })).toBeVisible()
+})
+
+test("restores submitted search state with browser back and forward", async ({ page }) => {
+  await page.goto("/search")
+
+  const creditInput = page.getByPlaceholder("Credit / performer, e.g. Tony Williams")
+
+  await creditInput.fill("Tony Williams")
+  await page.getByRole("button", { name: "Search" }).click()
+  await expect(page.getByText("1 albums")).toBeVisible()
+  await expect(creditInput).toHaveValue("Tony Williams")
+
+  await creditInput.fill("No Match")
+  await page.getByRole("button", { name: "Search" }).click()
+  await expect(
+    page.getByRole("heading", { name: 'No albums found for credit "No Match"' })
+  ).toBeVisible()
+  await expect(creditInput).toHaveValue("No Match")
+
+  await page.goBack()
+  await expect(page).toHaveURL(/credit=Tony\+Williams/)
+  await expect(page.getByText("1 albums")).toBeVisible()
+  await expect(creditInput).toHaveValue("Tony Williams")
+
+  await page.goForward()
+  await expect(page).toHaveURL(/credit=No\+Match/)
+  await expect(
+    page.getByRole("heading", { name: 'No albums found for credit "No Match"' })
+  ).toBeVisible()
+  await expect(creditInput).toHaveValue("No Match")
+})
+
+test("does not fetch suggestions while the suggestion panel is closed", async ({ page }) => {
+  const suggestionRequests: string[] = []
+  page.on("request", (request) => {
+    const url = new URL(request.url())
+    if (url.pathname === "/search/suggestions") {
+      suggestionRequests.push(request.url())
+    }
+  })
+
+  await page.goto("/search")
+
+  const songInput = page.getByPlaceholder("Song / track, e.g. Night in Tunisia")
+  await songInput.fill("Nef")
+  await songInput.blur()
+  await page.waitForTimeout(800)
+
+  expect(suggestionRequests).toEqual([])
 })
 
 test("shows an empty state when a search has no results", async ({ page }) => {

@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent, type MouseEvent } from "react"
 import {
+  Form,
   useFetcher,
   useLoaderData,
-  useNavigate,
   useNavigation,
   useSearchParams,
+  useSubmit,
 } from "react-router"
 import {
   Alert,
@@ -91,8 +92,8 @@ export async function loader({ request }: { request: Request }) {
 export default function SearchPage() {
   const { results, errorMessage } = useLoaderData<LoaderData>()
   const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
   const navigation = useNavigation()
+  const submit = useSubmit()
   const suggestionsFetcher = useFetcher<SuggestionData>()
 
   const submittedCredit = (
@@ -135,6 +136,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     const query = song.trim()
+    if (!isSuggestionOpen) return
     if (query.length < 3) return
 
     const timeout = window.setTimeout(() => {
@@ -145,9 +147,9 @@ export default function SearchPage() {
     }, 600)
 
     return () => window.clearTimeout(timeout)
-  }, [credit, genre, song, suggestionsFetcher])
+  }, [credit, genre, isSuggestionOpen, song, suggestionsFetcher])
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const params = new URLSearchParams()
     const nextCredit = credit.trim()
@@ -158,10 +160,7 @@ export default function SearchPage() {
     if (nextSong) params.append("song", nextSong)
     if (nextGenre) params.append("genre", nextGenre)
     if (nextRole) params.append("role", nextRole)
-    navigate({
-      pathname: "/search",
-      search: params.toString() ? `?${params.toString()}` : "",
-    })
+    submit(params, { action: "/search", method: "get" })
   }
 
   const buildSuggestionHref = (suggestion: SearchResult) => {
@@ -212,7 +211,9 @@ export default function SearchPage() {
         </HStack>
 
         <Box
-          as="form"
+          as={Form}
+          action="/search"
+          method="get"
           onSubmit={handleSubmit}
           bg="white"
           borderWidth="1px"
@@ -237,6 +238,7 @@ export default function SearchPage() {
                 <AppIcon name="user" size={17} />
               </InputLeftElement>
               <Input
+                name="credit"
                 placeholder="Credit / performer, e.g. Tony Williams"
                 value={credit}
                 onChange={(event) => setCredit(event.target.value)}
@@ -253,6 +255,7 @@ export default function SearchPage() {
                   <AppIcon name="music" size={17} />
                 </InputLeftElement>
                 <Input
+                  name="song"
                   placeholder="Song / track, e.g. Night in Tunisia"
                   value={song}
                   onChange={(event) => {
@@ -320,6 +323,7 @@ export default function SearchPage() {
                 <AppIcon name="tag" size={16} />
               </InputLeftElement>
               <Input
+                name="genre"
                 placeholder="Genre"
                 value={genre}
                 onChange={(event) => setGenre(event.target.value)}
@@ -336,6 +340,7 @@ export default function SearchPage() {
                 <AppIcon name="mic" size={16} />
               </InputLeftElement>
               <Input
+                name="role"
                 placeholder="Instrument / role filter, e.g. drums"
                 value={role}
                 onChange={(event) => setRole(event.target.value)}
