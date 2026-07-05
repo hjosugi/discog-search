@@ -105,3 +105,7 @@ When deploying or presenting results, keep Discogs attribution visible in the pr
 - [Architecture](docs/architecture.md): search flow, request model, ranking, detail flow, and React Router v7 notes.
 - [Explanation](docs/explanation.md): Japanese project notes covering terminology, search behavior, ranking, detail pages, and caching.
 - [React Router v7 readiness](docs/react-router-v7-readiness.md): migration and compatibility notes.
+
+## License
+
+0BSD. You can use, copy, modify, and distribute this project for almost any purpose.
