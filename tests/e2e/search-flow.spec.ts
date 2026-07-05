@@ -12,7 +12,7 @@ test("shows an initial guide before searching", async ({ page }) => {
 
 test("searches mocked Discogs results and opens album details", async ({ page }) => {
   await page.goto("/search")
-  await expect(page.getByRole("heading", { name: "Sideman Album Finder" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Search albums" })).toBeVisible()
   await page.waitForLoadState("networkidle")
   const documentSearchRequests: string[] = []
   page.on("request", (request) => {

@@ -1,5 +1,5 @@
 import { SearchParam, SearchResult } from "../types"
-import { discogsFetch } from "./discogsAuthMiddleware"
+import type { DiscogsFetch } from "../server/discogs"
 
 export const SEARCH_RESULTS_PER_PAGE = 100
 export const MAX_SEARCH_PAGES = 10
@@ -47,7 +47,7 @@ export async function searchDiscogsAlbums({
   country = "",
   format = "",
   page = 1,
-}: DiscogsSearchFilters): Promise<DiscogsSearchResponse> {
+}: DiscogsSearchFilters, discogsFetch: DiscogsFetch): Promise<DiscogsSearchResponse> {
   const requestedPage = normalizeRequestedPage(page)
   const primaryParams = buildSearchParams({
     credit,
@@ -59,7 +59,11 @@ export async function searchDiscogsAlbums({
     type: credit || song ? "release" : "master",
     useTrackSearch: Boolean(song),
   })
-  const primary = await fetchSearchPages(primaryParams, requestedPage)
+  const primary = await fetchSearchPages(
+    primaryParams,
+    requestedPage,
+    discogsFetch
+  )
 
   if (primary.rateLimited || primary.results.length > 0 || !song) {
     return primary
@@ -76,7 +80,8 @@ export async function searchDiscogsAlbums({
       type: credit || song ? "release" : "master",
       useTrackSearch: false,
     }),
-    requestedPage
+    requestedPage,
+    discogsFetch
   )
 }
 
@@ -109,7 +114,8 @@ function buildSearchParams({
 
 async function fetchSearchPages(
   params: SearchParam,
-  requestedPage: number
+  requestedPage: number,
+  discogsFetch: DiscogsFetch
 ): Promise<DiscogsSearchResponse> {
   const targetPage = normalizeRequestedPage(requestedPage)
   let allResults: SearchResult[] = []

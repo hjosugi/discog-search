@@ -94,23 +94,29 @@ database/search?credit=Tony Williams&q=Night In Tunisia&type=release&per_page=10
 
 ```text
 app/routes/search._index.tsx
-  loader()
-    -> searchDiscogsAlbums()
-      -> buildSearchParams()
-      -> fetchSearchPages()
-        -> discogsFetch()
-    -> rankSearchResults()
+  clientLoader()
+    -> Eden Treaty client
+    -> GET /api/search
+      -> app/server/app.ts
+      -> app/server/data.ts
+        -> searchDiscogsAlbums()
+          -> buildSearchParams()
+          -> fetchSearchPages()
+            -> ctx.discogs.fetch()
+        -> rankSearchResults()
 
 app/components/ResultList.tsx
   -> /search/:Id?kind=release&credit=...&song=...&role=...&page=...
 
 app/routes/search.$Id.tsx
-  loader()
-    -> fetchDiscogsRelease() or fetchDiscogsMaster()
-    -> findBestTrackMatch()
-    -> getTrackCredits()
-      -> creditAppliesToTrack()
-    -> filterCreditsByRole()
+  clientLoader()
+    -> Eden Treaty client
+    -> GET /api/releases/:id
+      -> fetchDiscogsRelease() or fetchDiscogsMaster()
+      -> findBestTrackMatch()
+  -> getTrackCredits()
+    -> creditAppliesToTrack()
+  -> filterCreditsByRole()
 ```
 
 This split keeps the first page fast and broad, while the detail page does the
@@ -170,30 +176,45 @@ users pivot from a track credit to that person's other credited releases while
 normal browser back navigation restores the previous detail page, including the
 selected track encoded in the URL or inferred from the original song query.
 
-## Discogs Fetch Layer
+## Server API and Discogs Fetch Layer
 
-`app/utils/discogsAuthMiddleware.ts` wraps Discogs API calls. It handles:
+The Cloudflare Worker entrypoint in `workers/app.ts` creates the Elysia app from
+`app/server/app.ts`. React Router route modules are SPA client routes; they do
+not read Discogs secrets or call Discogs directly. Their `clientLoader`
+functions call the same-origin Elysia API through Eden Treaty.
+
+The Elysia app exposes:
+
+- `GET /api/search`
+- `GET /api/suggestions`
+- `GET /api/releases/:id`
+
+`app/server/discogs.ts` provides the decorated Discogs client as `ctx.discogs`.
+It handles:
 
 - `DISCOGS_TOKEN` auth, with key/secret fallback,
 - query string construction,
 - a 10 minute in-memory response cache,
 - pending request coalescing,
 - a short global cooldown after HTTP 429 responses,
-- typed `DiscogsFetchError` values for route-level error handling.
+- limited-size Discogs error-body reads,
+- typed `DiscogsFetchError` values for API-level error handling.
 
-This keeps API failures from becoming Remix application errors and reduces
-repeat calls during typing and navigation.
+This keeps API failures from becoming application crashes and reduces repeat
+calls during typing and navigation.
 
 ## React Router v7
 
-The app runs on React Router v7 Framework Mode with the documented v8 future
-flags enabled. The important framework pieces are:
+The app runs on React Router v7 Framework Mode in SPA mode with a custom Elysia
+Worker API. The important framework pieces are:
 
-- `react-router dev` and `react-router build` scripts.
+- `react-router build` for SPA assets.
+- `wrangler dev --config wrangler.jsonc` for the full local Worker/API server.
 - `reactRouter()` in `vite.config.ts`.
 - `app/routes.ts` config routes via `@react-router/dev/routes`.
 - `react-router.config.ts` for framework config and v8 future flags.
-- `HydratedRouter` and `ServerRouter` in the entry files.
+- `HydratedRouter` for the client entry and a small Web Streams
+  `entry.server.tsx` used by React Router to prerender the SPA fallback.
 - Vite 6 is used because `v8_viteEnvironmentApi` requires Vite 6 or newer.
 - Node 20+ is required.
 - TypeScript uses bundler module resolution and generated React Router route
@@ -204,10 +225,9 @@ The enabled future flags are:
 - `v8_middleware`
 - `v8_splitRouteModules`
 - `v8_viteEnvironmentApi`
-- `v8_passThroughRequests`
 - `v8_trailingSlashAwareDataRequests`
 
-The app uses `react-router-serve` and does not have a custom `getLoadContext`
-or custom Vite SSR build input, so these flags did not require route-level code
-changes. Loader code that needs normalized route URLs should use the generated
-`url` argument rather than assuming `request.url` is normalized.
+The app no longer uses `react-router-serve` or React Router SSR for runtime
+requests. Cloudflare static assets are bound as `env.ASSETS` with
+`not_found_handling = "single-page-application"`, and non-API requests fall
+through to that asset binding.

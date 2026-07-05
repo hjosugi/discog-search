@@ -1,5 +1,5 @@
-import { redirect } from "react-router"
+import { Navigate } from "react-router"
 
-export function loader() {
-  return redirect("/search")
+export default function IndexRoute() {
+  return <Navigate to="/search" replace />
 }

@@ -64,7 +64,7 @@ Discogs の `credit` は完全に正規化された sideman 判定ではあり�
 /search/123456?kind=release&credit=Tony%20Williams
 ```
 
-詳細 loader は次の順で data を解決します。
+詳細 API は次の順で data を解決します。
 
 - `kind=release` なら `releases/{id}` を取得する
 - release に `master_id` があれば `masters/{master_id}` も取得する
@@ -78,7 +78,7 @@ release-level credit に `tracks` 範囲がある場合は、その範囲が sel
 
 ## Rate Limit と Cache
 
-Discogs API 呼び出しは `app/utils/discogsAuthMiddleware.ts` に集約しています。
+Discogs API 呼び出しは `app/server/discogs.ts` の Elysia plugin に集約しています。
 
 ここでやっていることは次です。
 
@@ -88,15 +88,17 @@ Discogs API 呼び出しは `app/utils/discogsAuthMiddleware.ts` に集約して
 - 10 分の in-memory cache
 - 同じ URL への同時 request の coalescing
 - HTTP 429 のあと短い cooldown
-- expected error を `DiscogsFetchError` として route 側で扱う
+- error body の読み取り上限
+- expected error を `DiscogsFetchError` として Elysia API 側で扱う
 
 これにより、入力中の suggestions や同じ検索の再実行で Discogs を叩きすぎないようにしています。
 
 ## Suggestions
 
-候補検索は `app/routes/search.suggestions.tsx` です。
+候補検索の UI route は `app/routes/search.suggestions.tsx` です。
 
-React Router v7 Framework Mode に合わせて、Remix の deprecated な `json()` helper は使わず、loader から plain object を返しています。
+React Router SPA の `clientLoader` から Eden Treaty で `/api/suggestions`
+を呼び、Elysia 側で Discogs search を実行します。
 
 ```ts
 return { suggestions }
@@ -104,25 +106,20 @@ return { suggestions }
 
 ## React Router v7 Framework Mode
 
-この app は React Router v7 Framework Mode に移行済みです。
+この app は React Router v7 Framework Mode の SPA mode と Elysia API に移行済みです。
 
 済んでいること:
 
-- `react-router dev` / `react-router build` / `react-router-serve` を使用
+- `react-router build` で SPA assets を生成
+- `wrangler dev --config wrangler.jsonc` で Worker / Elysia / static assets を起動
 - `reactRouter()` Vite plugin を使用
 - `app/routes.ts` で config routes を定義
-- entry file は `HydratedRouter` / `ServerRouter` を使用
+- entry file は `HydratedRouter` と SPA fallback 用の小さい `entry.server.tsx` を使用
 - `@remix-run/*` import は React Router package へ移行
 - Vite 6 を使用
-- React Router v8 future flags をすべて有効化
+- React Router v8 future flags を有効化
 - deprecated `json()` helper の削除
-- route loader の data return を v7 に合わせる
-
-まだ分けてやること:
-
-- local dev server を起動して browser smoke test を確認
-- favicon / suggestions / detail / error boundary の画面確認
-- React Router v8 の stable release と dependency floor を確認してから package major upgrade を行う
+- route loader の Discogs access を Elysia API + Eden Treaty に移動
 
 ## ローカル調査メモ
 

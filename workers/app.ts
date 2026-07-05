@@ -1,14 +1,21 @@
-import { createRequestHandler } from "react-router"
+import { createServerApp, type ServerEnv } from "../app/server/app"
 
-const requestHandler = createRequestHandler(
-  () => import("virtual:react-router/server-build"),
-  import.meta.env.MODE
-)
+const apps = new WeakMap<object, ReturnType<typeof createServerApp>>()
 
-// Secrets/vars are read via process.env (populated by the nodejs_compat
-// runtime from the Worker's bindings), so no load context needs threading.
+function getApp(env: ServerEnv) {
+  const key = env as object
+  let app = apps.get(key)
+
+  if (!app) {
+    app = createServerApp({ env })
+    apps.set(key, app)
+  }
+
+  return app
+}
+
 export default {
-  fetch(request) {
-    return requestHandler(request)
+  fetch(request, env) {
+    return getApp(env as ServerEnv).handle(request)
   },
 } satisfies ExportedHandler<Env>

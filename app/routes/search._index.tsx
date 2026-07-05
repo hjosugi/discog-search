@@ -44,34 +44,25 @@ import {
   type SearchHistoryInput,
 } from "../hooks/useSearchHistory"
 import { SearchResult } from "../types"
-import { MAX_SEARCH_PAGES, searchDiscogsAlbums } from "../utils/discogsSearch"
-import {
-  DiscogsFetchError,
-} from "../utils/discogsAuthMiddleware"
+import { api, getApiErrorMessage, toQueryObject } from "../utils/apiClient"
 import {
   buildPageMeta,
   compactText,
 } from "../utils/pageMeta"
+import type { SearchSortOption } from "../utils/searchRanking"
 import {
-  rankSearchResults,
-  type SearchSortOption,
-} from "../utils/searchRanking"
+  buildSearchParams,
+  DECADE_OPTIONS,
+  DEFAULT_PAGINATION,
+  formatSearchCriteria,
+  getResultSearchParams,
+  getSearchState,
+  getSortOption,
+  type SearchState,
+} from "../utils/searchState"
 
 type SuggestionData = {
   suggestions: SearchResult[]
-}
-
-type SearchState = {
-  credit: string
-  song: string
-  genre: string
-  role: string
-  year: string
-  decade: string
-  country: string
-  format: string
-  sort: SearchSortOption
-  page: number
 }
 
 type LoaderData = {
@@ -84,25 +75,6 @@ type LoaderData = {
   }
   errorMessage?: string
 }
-
-const DEFAULT_PAGINATION = {
-  page: 1,
-  totalPages: 1,
-  totalItems: 0,
-  reachedPageLimit: false,
-}
-
-const DECADE_OPTIONS = [
-  "1940",
-  "1950",
-  "1960",
-  "1970",
-  "1980",
-  "1990",
-  "2000",
-  "2010",
-  "2020",
-]
 
 const FORMAT_OPTIONS = ["LP", "CD", "Album", "Single", '12"', '7"', "Cassette"]
 
@@ -136,53 +108,24 @@ export function meta({ data, location }: SearchMetaArgs) {
   })
 }
 
-export async function loader({ request }: { request: Request }) {
+export async function clientLoader({ request }: { request: Request }) {
   const url = new URL(request.url)
-  const searchState = getSearchState(url.searchParams)
-  const { credit, song, genre, year, country, format, sort, page } = searchState
+  const response = await api.api.search.get({
+    query: toQueryObject(url.searchParams),
+  })
 
-  if (!credit && !song && !genre) {
-    return { results: [], pagination: DEFAULT_PAGINATION }
-  }
-
-  try {
-    const searchResults = await searchDiscogsAlbums({
-      credit,
-      song,
-      genre,
-      year,
-      country,
-      format,
-      page,
-    })
-    const results = rankSearchResults(
-      filterResultsByDecade(searchResults.results, searchState),
-      {
-        credit,
-        song,
-        genre,
-      },
-      { sort }
-    )
-
-    return {
-      results,
-      pagination: searchResults.pagination,
-      errorMessage: searchResults.rateLimited
-        ? "Discogs is cooling down after rate limiting. Cached results will be used when available."
-        : undefined,
-    }
-  } catch (error) {
-    if (!isExpectedDiscogsSearchError(error)) {
-      console.error("Failed to fetch Discogs search results:", error)
-    }
-
+  if (response.error) {
     return {
       results: [],
       pagination: DEFAULT_PAGINATION,
-      errorMessage: getSearchErrorMessage(error),
+      errorMessage: getApiErrorMessage(
+        response.error,
+        "Could not fetch Discogs search results. Please try again."
+      ),
     }
   }
+
+  return response.data ?? { results: [], pagination: DEFAULT_PAGINATION }
 }
 
 export default function SearchPage() {
@@ -730,89 +673,9 @@ function SearchHistoryPanel({
   )
 }
 
-function getSearchState(searchParams: URLSearchParams): SearchState {
-  const year = getYearOption(searchParams.get("year"))
-
-  return {
-    credit: (
-      searchParams.get("credit") ||
-      searchParams.get("person") ||
-      ""
-    ).trim(),
-    song: (
-      searchParams.get("song") ||
-      searchParams.get("q") ||
-      searchParams.get("artist") ||
-      ""
-    ).trim(),
-    genre: (searchParams.get("genre") || "").trim(),
-    role: (searchParams.get("role") || "").trim(),
-    year,
-    decade: year ? "" : getDecadeOption(searchParams.get("decade")),
-    country: (searchParams.get("country") || "").trim(),
-    format: (searchParams.get("format") || "").trim(),
-    sort: getSortOption(searchParams.get("sort")),
-    page: getPageOption(searchParams.get("page")),
-  }
-}
-
-function getResultSearchParams(searchState: SearchState) {
-  return Object.fromEntries(buildSearchParams(searchState)) as {
-    [key: string]: string
-  }
-}
-
 function buildSearchPageHref(searchState: SearchState, page: number) {
   const params = buildSearchParams({ ...searchState, page })
   return `/search?${params.toString()}`
-}
-
-function buildSearchParams(searchState: SearchState) {
-  const params = new URLSearchParams()
-
-  if (searchState.credit) params.set("credit", searchState.credit)
-  if (searchState.song) params.set("song", searchState.song)
-  if (searchState.genre) params.set("genre", searchState.genre)
-  if (searchState.role) params.set("role", searchState.role)
-  if (searchState.year) {
-    params.set("year", searchState.year)
-  } else if (searchState.decade) {
-    params.set("decade", searchState.decade)
-  }
-  if (searchState.country) params.set("country", searchState.country)
-  if (searchState.format) params.set("format", searchState.format)
-  if (searchState.sort !== "relevance") params.set("sort", searchState.sort)
-  if (searchState.page > 1) params.set("page", String(searchState.page))
-
-  return params
-}
-
-function formatSearchCriteria(searchState: SearchState) {
-  const parts = [
-    searchState.credit && `"${searchState.credit}" credits`,
-    searchState.song && `"${searchState.song}" tracks`,
-    searchState.genre && `${searchState.genre} albums`,
-    searchState.year && searchState.year,
-    searchState.decade && `${searchState.decade}s`,
-    searchState.country && searchState.country,
-    searchState.format && searchState.format,
-    searchState.role && searchState.role,
-  ].filter(Boolean)
-
-  return parts.join(" / ")
-}
-
-function filterResultsByDecade(results: SearchResult[], searchState: SearchState) {
-  if (!searchState.decade || searchState.year) return results
-
-  const decadeStart = Number(searchState.decade)
-  if (!Number.isFinite(decadeStart)) return results
-  const decadeEnd = decadeStart + 9
-
-  return results.filter((result) => {
-    const year = Number(result.year)
-    return Number.isFinite(year) && year >= decadeStart && year <= decadeEnd
-  })
 }
 
 function getHeadingSummary(
@@ -830,48 +693,6 @@ function getHeadingSummary(
   return hasSearchCriteria ? "No albums found" : "Search by player"
 }
 
-function getSortOption(value: string | null): SearchSortOption {
-  return value === "year_desc" || value === "year_asc" ? value : "relevance"
-}
-
-function getPageOption(value: string | null) {
-  const page = Number(value || 1)
-  return Number.isFinite(page) && page > 0
-    ? Math.min(Math.floor(page), MAX_SEARCH_PAGES)
-    : 1
-}
-
-function getYearOption(value: string | null) {
-  const year = (value || "").trim()
-  return /^\d{4}$/.test(year) ? year : ""
-}
-
-function getDecadeOption(value: string | null) {
-  const decade = (value || "").trim().replace(/s$/i, "")
-  return DECADE_OPTIONS.includes(decade) ? decade : ""
-}
-
 function formatCount(value: number) {
   return value.toLocaleString("en-US")
-}
-
-function getSearchErrorMessage(error: unknown) {
-  if (error instanceof DiscogsFetchError) {
-    if (error.status === 401 || error.status === 403) {
-      return "Discogs rejected the request. Check DISCOGS_TOKEN, or DISCOGS_API_KEY and DISCOGS_API_SECRET, then restart the dev server."
-    }
-    if (error.status === 429) {
-      return "Discogs rate limit was reached. Please wait a moment and search again."
-    }
-    return error.message
-  }
-
-  return "Could not fetch Discogs search results. Please try again."
-}
-
-function isExpectedDiscogsSearchError(error: unknown) {
-  return (
-    error instanceof DiscogsFetchError &&
-    (error.status === 401 || error.status === 403 || error.status === 429)
-  )
 }

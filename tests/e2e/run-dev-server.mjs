@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -14,6 +14,12 @@ const originalDevVars = hadDevVars
 const hadUserDevVars = originalDevVars.length > 0
 let restored = false
 
+const env = {
+  ...process.env,
+  DISCOGS_API_BASE_URL: `http://127.0.0.1:${apiPort}`,
+  DISCOGS_TOKEN: "playwright-test-token",
+}
+
 writeFileSync(
   devVarsPath,
   [
@@ -27,13 +33,30 @@ writeFileSync(
     .join("\n") + "\n"
 )
 
-const child = spawn("pnpm", ["dev", "--host", "127.0.0.1", "--port", appPort], {
+const build = spawnSync("bun", ["run", "build"], {
   cwd: rootDir,
-  env: {
-    ...process.env,
-    DISCOGS_API_BASE_URL: `http://127.0.0.1:${apiPort}`,
-    DISCOGS_TOKEN: "playwright-test-token",
-  },
+  env,
+  stdio: "inherit",
+})
+
+if (build.status !== 0) {
+  restoreDevVars()
+  process.exit(build.status ?? 1)
+}
+
+const child = spawn("bun", [
+  "x",
+  "wrangler",
+  "dev",
+  "--config",
+  "wrangler.jsonc",
+  "--ip",
+  "127.0.0.1",
+  "--port",
+  appPort,
+], {
+  cwd: rootDir,
+  env,
   stdio: "inherit",
 })
 

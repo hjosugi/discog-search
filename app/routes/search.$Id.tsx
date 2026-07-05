@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from "react"
 import {
   isRouteErrorResponse,
-  Link as RemixLink,
+  Link as RouterLink,
   useLoaderData,
   useRouteError,
 } from "react-router"
@@ -24,14 +24,11 @@ import {
 
 import { AppIcon } from "~/components/AppIcon"
 import {
-  DiscogsFetchError,
-  discogsFetch,
-} from "~/utils/discogsAuthMiddleware"
-import {
   DiscogsMaster,
   DiscogsRelease,
   DiscogsVideo,
 } from "~/types"
+import { api, getApiErrorMessage, toQueryObject } from "~/utils/apiClient"
 import {
   buildPageMeta,
   compactText,
@@ -58,11 +55,7 @@ type LoaderData = {
   detailKind: "master" | "release"
 }
 
-type RateLimitedResponse = {
-  rateLimited?: boolean
-}
-
-export async function loader({
+export async function clientLoader({
   params,
   request,
 }: {
@@ -70,62 +63,32 @@ export async function loader({
   request: Request
 }) {
   const url = new URL(request.url)
-  const searchParams = new URLSearchParams(url.search)
   const albumId = params.Id
-  const resultKind = searchParams.get("kind") === "release" ? "release" : "master"
-  const requestedTrack = searchParams.get("track")
-  const searchQuery = searchParams.get("song") || searchParams.get("q") || ""
-  const roleFilter = searchParams.get("role") || ""
 
   if (!albumId) {
     throw new Response("Album ID is required", { status: 400 })
   }
 
-  try {
-    const release =
-      resultKind === "release" ? await fetchDiscogsRelease(albumId) : null
-    const master = release
-      ? release.master_id
-        ? await fetchDiscogsMaster(release.master_id)
-        : (release as DiscogsMaster)
-      : await fetchDiscogsMaster(albumId)
-    const resolvedRelease =
-      release ||
-      (master.main_release
-        ? await fetchDiscogsRelease(master.main_release)
-        : (master as DiscogsRelease))
-    const selectedTrackPosition =
-      requestedTrack ||
-      findBestTrackMatch(resolvedRelease.tracklist || master.tracklist || [], searchQuery)
-        ?.position ||
-      null
+  const response = await api.api.releases({ id: albumId }).get({
+    query: toQueryObject(url.searchParams),
+  })
 
-    return {
-      master,
-      release: resolvedRelease,
-      selectedTrackPosition,
-      searchQuery,
-      roleFilter,
-      backQuery: searchParams.toString(),
-      detailId: albumId,
-      detailKind: resultKind,
-    }
-  } catch (error) {
-    if (error instanceof Response) {
-      throw error
-    }
-    if (error instanceof DiscogsFetchError) {
-      if (!isExpectedDiscogsAlbumError(error)) {
-        console.error("Failed to fetch album data:", error)
-      }
-      throw new Response(getAlbumErrorMessage(error), {
-        status: error.status,
-      })
-    }
-
-    console.error("Failed to fetch album data:", error)
-    throw new Response("Failed to fetch album data", { status: 500 })
+  if (response.error) {
+    throw new Response(
+      getApiErrorMessage(response.error, "Failed to fetch album data."),
+      { status: response.status }
+    )
   }
+
+  const data = response.data as unknown as LoaderData | null
+
+  if (!data) {
+    throw new Response("Failed to fetch album data.", {
+      status: 500,
+    })
+  }
+
+  return data
 }
 
 type AlbumMetaArgs = {
@@ -190,7 +153,7 @@ export function ErrorBoundary() {
         {status} / {message}
       </Text>
       <Button
-        as={RemixLink}
+        as={RouterLink}
         to="/search"
         leftIcon={<AppIcon name="arrowLeft" size={15} />}
         variant="link"
@@ -199,58 +162,6 @@ export function ErrorBoundary() {
       </Button>
     </Box>
   )
-}
-
-async function fetchDiscogsMaster(id: string | number) {
-  const response = await discogsFetch<DiscogsMaster | RateLimitedResponse>(
-    `masters/${id}`
-  )
-  if (isRateLimitedResponse(response)) {
-    throw new Response("Discogs is cooling down after rate limiting.", {
-      status: 429,
-    })
-  }
-  return response
-}
-
-async function fetchDiscogsRelease(id: string | number) {
-  const response = await discogsFetch<DiscogsRelease | RateLimitedResponse>(
-    `releases/${id}`
-  )
-  if (isRateLimitedResponse(response)) {
-    throw new Response("Discogs is cooling down after rate limiting.", {
-      status: 429,
-    })
-  }
-  return response
-}
-
-function isRateLimitedResponse(
-  response: DiscogsMaster | DiscogsRelease | RateLimitedResponse
-): response is RateLimitedResponse {
-  return Boolean("rateLimited" in response && response.rateLimited)
-}
-
-function isExpectedDiscogsAlbumError(error: DiscogsFetchError) {
-  return (
-    error.status === 401 ||
-    error.status === 403 ||
-    error.status === 404 ||
-    error.status === 429
-  )
-}
-
-function getAlbumErrorMessage(error: DiscogsFetchError) {
-  if (error.status === 401 || error.status === 403) {
-    return "Discogs rejected the request. Check DISCOGS_TOKEN, then restart the dev server."
-  }
-  if (error.status === 404) {
-    return "This Discogs item could not be found."
-  }
-  if (error.status === 429) {
-    return "Discogs rate limit was reached. Please wait a moment and try again."
-  }
-  return "Failed to fetch album data."
 }
 
 export default function AlbumView() {
@@ -475,7 +386,7 @@ export default function AlbumView() {
                 return (
                   <Box
                     key={`${track.position}-${track.title}`}
-                    as={RemixLink}
+                    as={RouterLink}
                     to={`/search/${detailId}?${params.toString()}`}
                     p={2}
                     borderRadius="md"
@@ -511,7 +422,7 @@ export default function AlbumView() {
 
         <Divider my={6} />
         <Button
-          as={RemixLink}
+          as={RouterLink}
           to={`/search${backQuery ? `?${backQuery}` : ""}`}
           leftIcon={<AppIcon name="arrowLeft" size={15} />}
           variant="link"
@@ -539,7 +450,7 @@ function DetailBreadcrumb({
       spacing={2}
     >
       <Link
-        as={RemixLink}
+        as={RouterLink}
         to={`/search${backQuery ? `?${backQuery}` : ""}`}
         color="blue.700"
         fontWeight="semibold"
@@ -601,7 +512,7 @@ function CreditList({
               </Text>
               <Box>
                 <Link
-                  as={RemixLink}
+                  as={RouterLink}
                   to={buildCreditSearchPath(credit.name)}
                   color="blue.700"
                   fontWeight="bold"
@@ -660,7 +571,7 @@ function RoleFilterLinks({
         return (
           <WrapItem key={role}>
             <Button
-              as={RemixLink}
+              as={RouterLink}
               to={`/search/${detailId}?${params.toString()}`}
               colorScheme={isActive ? "blue" : "gray"}
               size="xs"
@@ -674,7 +585,7 @@ function RoleFilterLinks({
       {activeRole && (
         <WrapItem>
           <Button
-            as={RemixLink}
+            as={RouterLink}
             to={`/search/${detailId}?${clearRoleFilter(backQuery, detailKind)}`}
             size="xs"
             variant="ghost"
