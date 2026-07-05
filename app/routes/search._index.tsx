@@ -49,6 +49,10 @@ import {
   DiscogsFetchError,
 } from "../utils/discogsAuthMiddleware"
 import {
+  buildPageMeta,
+  compactText,
+} from "../utils/pageMeta"
+import {
   rankSearchResults,
   type SearchSortOption,
 } from "../utils/searchRanking"
@@ -107,6 +111,30 @@ const SORT_OPTIONS: Array<{ value: SearchSortOption; label: string }> = [
   { value: "year_desc", label: "Year (newest)" },
   { value: "year_asc", label: "Year (oldest)" },
 ]
+
+type SearchMetaArgs = {
+  data?: LoaderData
+  location: {
+    search: string
+  }
+}
+
+export function meta({ data, location }: SearchMetaArgs) {
+  const searchState = getSearchState(new URLSearchParams(location.search))
+  const criteria = formatSearchCriteria(searchState)
+  const title = criteria
+    ? `${criteria} | Sideman Album Finder`
+    : "Sideman Album Finder | Discogs credits search"
+  const resultCount = data?.pagination.totalItems || data?.results.length || 0
+  const description = criteria
+    ? `${resultCount ? `${resultCount} Discogs matches for ` : "Search Discogs album credits for "}${criteria}. Filter by player, track, genre, year, country, format, and role.`
+    : "Search Discogs album credits by player, track, genre, year, country, format, and role."
+
+  return buildPageMeta({
+    title,
+    description: compactText(description),
+  })
+}
 
 export async function loader({ request }: { request: Request }) {
   const url = new URL(request.url)
@@ -773,6 +801,21 @@ function buildSearchParams(searchState: SearchState) {
   if (searchState.page > 1) params.set("page", String(searchState.page))
 
   return params
+}
+
+function formatSearchCriteria(searchState: SearchState) {
+  const parts = [
+    searchState.credit && `"${searchState.credit}" credits`,
+    searchState.song && `"${searchState.song}" tracks`,
+    searchState.genre && `${searchState.genre} albums`,
+    searchState.year && searchState.year,
+    searchState.decade && `${searchState.decade}s`,
+    searchState.country && searchState.country,
+    searchState.format && searchState.format,
+    searchState.role && searchState.role,
+  ].filter(Boolean)
+
+  return parts.join(" / ")
 }
 
 function filterResultsByDecade(results: SearchResult[], searchState: SearchState) {

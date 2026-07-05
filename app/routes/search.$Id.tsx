@@ -33,6 +33,10 @@ import {
   DiscogsVideo,
 } from "~/types"
 import {
+  buildPageMeta,
+  compactText,
+} from "~/utils/pageMeta"
+import {
   dedupeCredits,
   filterCreditsByRole,
   findBestTrackMatch,
@@ -122,6 +126,39 @@ export async function loader({
     console.error("Failed to fetch album data:", error)
     throw new Response("Failed to fetch album data", { status: 500 })
   }
+}
+
+type AlbumMetaArgs = {
+  data?: LoaderData
+}
+
+export function meta({ data }: AlbumMetaArgs) {
+  if (!data) {
+    return buildPageMeta({
+      title: "Album details | Sideman Album Finder",
+      description: "Explore Discogs album credits, track performers, and release details.",
+    })
+  }
+
+  const { master, release, searchQuery, selectedTrackPosition } = data
+  const artistName = getArtistName(release, master)
+  const title = `${release.title}${artistName ? ` by ${artistName}` : ""} | Sideman Album Finder`
+  const tracks = release.tracklist || master.tracklist || []
+  const selectedTrack =
+    tracks.find((track) => track.position === selectedTrackPosition) ||
+    findBestTrackMatch(tracks, searchQuery) ||
+    tracks[0]
+  const trackText = selectedTrack
+    ? ` Track focus: ${selectedTrack.title}.`
+    : ""
+  const description = `${artistName ? `${artistName} - ` : ""}${release.title}${release.year ? ` (${release.year})` : ""}. Explore Discogs performers, credits, tracks, and source release links.${trackText}`
+
+  return buildPageMeta({
+    title: compactText(title, 90),
+    description: compactText(description),
+    image: getCoverImage(release, master) || "/logo-dark.png",
+    type: "music.album",
+  })
 }
 
 export function ErrorBoundary() {
@@ -261,11 +298,7 @@ export default function AlbumView() {
   const otherCredits = selectedCredits.filter(
     (credit) => !isPerformanceRole(credit.role)
   )
-  const artistName =
-    release.artists_sort ||
-    release.artists?.map((artist) => artist.name).join(", ") ||
-    master.artists?.map((artist) => artist.name).join(", ") ||
-    ""
+  const artistName = getArtistName(release, master)
   const playQuery = buildPlaybackQuery(
     artistName,
     selectedTrack?.title || release.title
@@ -696,6 +729,15 @@ function clearRoleFilter(
 
 function getCoverImage(release: DiscogsRelease, master: DiscogsMaster) {
   return release.images?.[0]?.uri || master.images?.[0]?.uri || null
+}
+
+function getArtistName(release: DiscogsRelease, master: DiscogsMaster) {
+  return (
+    release.artists_sort ||
+    release.artists?.map((artist) => artist.name).join(", ") ||
+    master.artists?.map((artist) => artist.name).join(", ") ||
+    ""
+  )
 }
 
 function normalize(value = "") {
