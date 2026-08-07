@@ -25,3 +25,9 @@ worker-configuration.d.ts
 # Test artifacts
 /test-results
 /playwright-report
+.claude/skills/graphify/
+.claude/settings.local.json
+.copilot/skills/graphify/
+.codex/skills/graphify/
+.codex/hooks.json
+graphify-out/

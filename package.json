@@ -14,7 +14,9 @@
     "start": "wrangler dev --config wrangler.jsonc",
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "playwright test",
-    "typecheck": "wrangler types --config wrangler.jsonc && react-router typegen && tsc"
+    "typecheck": "wrangler types --config wrangler.jsonc && react-router typegen && tsc",
+    "graphify:setup": "sh scripts/graphify.sh setup",
+    "graphify:update": "sh scripts/graphify.sh update"
   },
   "dependencies": {
     "@chakra-ui/react": "^2.10.3",
