@@ -55,12 +55,12 @@ export function ResultList({
           <Box
             key={result.id}
             mb={3}
-            bg="white"
+            bg="bg.surface"
             borderWidth="1px"
-            borderColor="gray.200"
+            borderColor="border.default"
             borderRadius="md"
             transition="border-color 120ms ease, box-shadow 120ms ease"
-            _hover={{ borderColor: "blue.300", boxShadow: "sm" }}
+            _hover={{ borderColor: "border.hover", boxShadow: "sm" }}
           >
             <Link to={`/search/${result.id}${queryString ? `?${queryString}` : ""}`}>
               <HStack align="start" spacing={3} p={3}>
@@ -77,9 +77,9 @@ export function ResultList({
                   <Box
                     alignItems="center"
                     boxSize={{ base: "56px", md: "64px" }}
-                    bg="gray.100"
+                    bg="bg.muted"
                     borderRadius="sm"
-                    color="gray.400"
+                    color="text.icon"
                     display="flex"
                     flexShrink={0}
                     justifyContent="center"
@@ -94,7 +94,7 @@ export function ResultList({
                         {result.title}
                       </Text>
                       {summary && (
-                        <HStack color="gray.600" spacing={1} mt={1}>
+                        <HStack color="text.muted" spacing={1} mt={1}>
                           <AppIcon name="tag" size={13} />
                           <Text fontSize="sm" noOfLines={1}>
                             {summary}
@@ -102,7 +102,7 @@ export function ResultList({
                         </HStack>
                       )}
                     </Box>
-                    <Text color="gray.400" flexShrink={0} mt={1}>
+                    <Text color="text.icon" flexShrink={0} mt={1}>
                       <AppIcon name="external" size={15} />
                     </Text>
                   </HStack>
@@ -110,8 +110,8 @@ export function ResultList({
                     {buildTags(result).map((tag) => (
                       <Badge
                         key={tag}
-                        bg="gray.100"
-                        color="gray.700"
+                        bg="bg.muted"
+                        color="text.secondary"
                         fontWeight="medium"
                         textTransform="none"
                       >
@@ -133,7 +133,7 @@ export function ResultList({
 export function ResultListSkeleton() {
   return (
     <Box mt={5} role="status" aria-live="polite">
-      <HStack color="gray.600" mb={3} spacing={2}>
+      <HStack color="text.muted" mb={3} spacing={2}>
         <Spinner size="sm" />
         <Text fontSize="sm" fontWeight="medium">
           Searching albums
@@ -143,9 +143,9 @@ export function ResultListSkeleton() {
         <Box
           key={item}
           mb={3}
-          bg="white"
+          bg="bg.surface"
           borderWidth="1px"
-          borderColor="gray.200"
+          borderColor="border.default"
           borderRadius="md"
           p={3}
         >
@@ -181,18 +181,18 @@ function InitialSearchGuide() {
   return (
     <Box
       mt={5}
-      bg="white"
+      bg="bg.surface"
       borderWidth="1px"
-      borderColor="gray.200"
+      borderColor="border.default"
       borderRadius="md"
       p={{ base: 4, md: 5 }}
     >
       <HStack align="start" spacing={3}>
         <Box
           alignItems="center"
-          bg="blue.50"
+          bg="bg.accent"
           borderRadius="md"
-          color="blue.600"
+          color="text.accent"
           display="flex"
           flexShrink={0}
           h="40px"
@@ -205,7 +205,7 @@ function InitialSearchGuide() {
           <Heading as="h2" size="sm">
             Start with a credit, song, or genre
           </Heading>
-          <Text color="gray.600" fontSize="sm" mt={1}>
+          <Text color="text.muted" fontSize="sm" mt={1}>
             Search examples:
           </Text>
           <Wrap mt={3} spacing={2}>
@@ -214,16 +214,16 @@ function InitialSearchGuide() {
                 key={example.to}
                 as={Link}
                 to={example.to}
-                bg="gray.50"
+                bg="bg.subtle"
                 borderWidth="1px"
-                borderColor="gray.200"
+                borderColor="border.default"
                 borderRadius="md"
-                color="gray.700"
+                color="text.secondary"
                 fontSize="sm"
                 fontWeight="medium"
                 px={3}
                 py={2}
-                _hover={{ bg: "blue.50", borderColor: "blue.200" }}
+                _hover={{ bg: "bg.selected", borderColor: "border.selected" }}
               >
                 {example.label}
               </Box>
@@ -246,18 +246,18 @@ function EmptySearchState({
   return (
     <Box
       mt={5}
-      bg="white"
+      bg="bg.surface"
       borderWidth="1px"
-      borderColor="gray.200"
+      borderColor="border.default"
       borderRadius="md"
       p={{ base: 4, md: 5 }}
     >
       <HStack align="start" spacing={3}>
         <Box
           alignItems="center"
-          bg="gray.100"
+          bg="bg.muted"
           borderRadius="md"
-          color="gray.500"
+          color="text.subtle"
           display="flex"
           flexShrink={0}
           h="40px"
@@ -270,7 +270,7 @@ function EmptySearchState({
           <Heading as="h2" size="sm">
             No albums found for {summary}
           </Heading>
-          <VStack align="stretch" color="gray.600" fontSize="sm" mt={2} spacing={1}>
+          <VStack align="stretch" color="text.muted" fontSize="sm" mt={2} spacing={1}>
             <Text>Check alternate spellings or shorter artist names.</Text>
             <Text>Try searching only the credit or only the song.</Text>
             {searchParams.genre ? <Text>Remove genre for a broader match.</Text> : null}
@@ -282,16 +282,16 @@ function EmptySearchState({
                   key={link.to}
                   as={Link}
                   to={link.to}
-                  bg="gray.50"
+                  bg="bg.subtle"
                   borderWidth="1px"
-                  borderColor="gray.200"
+                  borderColor="border.default"
                   borderRadius="md"
-                  color="gray.700"
+                  color="text.secondary"
                   fontSize="sm"
                   fontWeight="medium"
                   px={3}
                   py={2}
-                  _hover={{ bg: "blue.50", borderColor: "blue.200" }}
+                  _hover={{ bg: "bg.selected", borderColor: "border.selected" }}
                 >
                   {link.label}
                 </Box>
@@ -339,7 +339,7 @@ function PaginationSummary({
 
   return (
     <HStack justify="space-between" align="center" mb={3} spacing={3}>
-      <Text color="gray.600" fontSize="sm">
+      <Text color="text.muted" fontSize="sm">
         Showing {formatCount(resultsCount)} of {formatCount(totalItems)} albums
       </Text>
       {pagination.page > 1 ? (
@@ -371,9 +371,9 @@ function PaginationFooter({
 
   return (
     <Box
-      bg="white"
+      bg="bg.surface"
       borderWidth="1px"
-      borderColor="gray.200"
+      borderColor="border.default"
       borderRadius="md"
       mt={4}
       p={3}
@@ -390,7 +390,7 @@ function PaginationFooter({
           Load more
         </Button>
       ) : (
-        <Text color="gray.600" fontSize="sm">
+        <Text color="text.muted" fontSize="sm">
           Page limit reached before all {formatCount(pagination.totalItems)}
           {" "}
           Discogs matches were loaded.

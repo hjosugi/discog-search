@@ -13,9 +13,9 @@ export function Header() {
   return (
     <Box
       as="header"
-      bg="white"
+      bg="bg.surface"
       borderBottomWidth="1px"
-      borderColor="gray.200"
+      borderColor="border.default"
     >
       <Container maxW="1100px" px={{ base: 4, md: 6 }} py={3}>
         <Link
@@ -27,9 +27,9 @@ export function Header() {
           <HStack spacing={3}>
             <Box
               alignItems="center"
-              bg="black"
+              bg="logo.bg"
               borderRadius="md"
-              color="white"
+              color="logo.fg"
               display="flex"
               h="40px"
               justifyContent="center"
@@ -38,10 +38,10 @@ export function Header() {
               <AppIcon name="disc" size={22} />
             </Box>
             <Box>
-              <Text color="gray.900" fontSize="md" fontWeight="bold">
+              <Text color="text.default" fontSize="md" fontWeight="bold">
                 Sideman Album Finder
               </Text>
-              <Text color="gray.600" fontSize="xs">
+              <Text color="text.muted" fontSize="xs">
                 Discogs credits search
               </Text>
             </Box>

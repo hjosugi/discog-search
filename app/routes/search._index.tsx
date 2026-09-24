@@ -285,14 +285,14 @@ export default function SearchPage() {
   return (
     <Box maxW="980px" mx="auto">
         <HStack spacing={3} mb={5} align="center">
-          <Text color="blue.600">
+          <Text color="text.accent">
             <AppIcon name="search" size={20} />
           </Text>
           <Box>
             <Heading as="h1" size="md">
               Search albums
             </Heading>
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="text.muted">
               {isSearchPending
                 ? "Searching albums"
                 : headingSummary}
@@ -305,9 +305,9 @@ export default function SearchPage() {
           action="/search"
           method="get"
           onSubmit={handleSubmit}
-          bg="white"
+          bg="bg.surface"
           borderWidth="1px"
-          borderColor="gray.200"
+          borderColor="border.default"
           borderRadius="md"
           p={{ base: 3, md: 4 }}
           boxShadow="sm"
@@ -324,7 +324,7 @@ export default function SearchPage() {
               size="md"
               gridColumn={{ base: "auto", md: "1 / -1", lg: "auto" }}
             >
-              <InputLeftElement color="gray.400">
+              <InputLeftElement color="text.icon">
                 <AppIcon name="user" size={17} />
               </InputLeftElement>
               <Input
@@ -332,7 +332,7 @@ export default function SearchPage() {
                 placeholder="Credit / performer, e.g. Tony Williams"
                 value={credit}
                 onChange={(event) => setCredit(event.target.value)}
-                bg="white"
+                bg="bg.surface"
               />
             </InputGroup>
 
@@ -341,7 +341,7 @@ export default function SearchPage() {
               gridColumn={{ base: "auto", md: "1 / 2", lg: "auto" }}
             >
               <InputGroup size="md">
-                <InputLeftElement color="gray.400">
+                <InputLeftElement color="text.icon">
                   <AppIcon name="music" size={17} />
                 </InputLeftElement>
                 <Input
@@ -355,7 +355,7 @@ export default function SearchPage() {
                   onFocus={() => setIsSuggestionOpen(true)}
                   onBlur={() => setIsSuggestionOpen(false)}
                   autoComplete="off"
-                  bg="white"
+                  bg="bg.surface"
                 />
               </InputGroup>
 
@@ -366,9 +366,9 @@ export default function SearchPage() {
                   top="calc(100% + 4px)"
                   left={0}
                   right={0}
-                  bg="white"
+                  bg="bg.surface"
                   borderWidth="1px"
-                  borderColor="gray.200"
+                  borderColor="border.default"
                   borderRadius="md"
                   boxShadow="md"
                   overflow="hidden"
@@ -381,11 +381,11 @@ export default function SearchPage() {
                       display="block"
                       px={4}
                       py={2}
-                      _hover={{ bg: "gray.50" }}
+                      _hover={{ bg: "bg.subtle" }}
                       onMouseDown={(event: MouseEvent) => event.preventDefault()}
                     >
                       <HStack spacing={2}>
-                        <Text color="gray.400">
+                        <Text color="text.icon">
                           <AppIcon name="music" size={15} />
                         </Text>
                         <Box minW={0}>
@@ -393,7 +393,7 @@ export default function SearchPage() {
                             {suggestion.title}
                           </Text>
                           {suggestion.year && (
-                            <Text fontSize="xs" color="gray.500">
+                            <Text fontSize="xs" color="text.subtle">
                               {suggestion.year}
                             </Text>
                           )}
@@ -409,7 +409,7 @@ export default function SearchPage() {
               size="md"
               gridColumn={{ base: "auto", md: "2 / 3", lg: "auto" }}
             >
-              <InputLeftElement color="gray.400">
+              <InputLeftElement color="text.icon">
                 <AppIcon name="tag" size={16} />
               </InputLeftElement>
               <Input
@@ -418,7 +418,7 @@ export default function SearchPage() {
                 value={genre}
                 onChange={(event) => setGenre(event.target.value)}
                 list="genre-suggestions"
-                bg="white"
+                bg="bg.surface"
               />
             </InputGroup>
 
@@ -426,7 +426,7 @@ export default function SearchPage() {
               size="md"
               gridColumn={{ base: "auto", md: "1 / 3", lg: "1 / 4" }}
             >
-              <InputLeftElement color="gray.400">
+              <InputLeftElement color="text.icon">
                 <AppIcon name="mic" size={16} />
               </InputLeftElement>
               <Input
@@ -435,7 +435,7 @@ export default function SearchPage() {
                 value={role}
                 onChange={(event) => setRole(event.target.value)}
                 list="role-suggestions"
-                bg="white"
+                bg="bg.surface"
               />
             </InputGroup>
 
@@ -471,7 +471,7 @@ export default function SearchPage() {
                 setYear(event.target.value)
                 if (event.target.value.trim()) setDecade("")
               }}
-              bg="white"
+              bg="bg.surface"
             />
             <Input
               aria-label="Country"
@@ -479,13 +479,13 @@ export default function SearchPage() {
               value={country}
               onChange={(event) => setCountry(event.target.value)}
               list="country-suggestions"
-              bg="white"
+              bg="bg.surface"
             />
             <Select
               aria-label="Format"
               value={format}
               onChange={(event) => setFormat(event.target.value)}
-              bg="white"
+              bg="bg.surface"
             >
               <option value="">Any format</option>
               {FORMAT_OPTIONS.map((option) => (
@@ -498,7 +498,7 @@ export default function SearchPage() {
               aria-label="Sort"
               value={sort}
               onChange={(event) => setSort(getSortOption(event.target.value))}
-              bg="white"
+              bg="bg.surface"
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -616,16 +616,16 @@ function SearchHistoryPanel({
 
   return (
     <Box
-      bg="white"
+      bg="bg.surface"
       borderWidth="1px"
-      borderColor="gray.200"
+      borderColor="border.default"
       borderRadius="md"
       boxShadow="sm"
       mt={3}
       p={3}
     >
       <HStack justify="space-between" mb={2} spacing={3}>
-        <HStack color="gray.700" spacing={2}>
+        <HStack color="text.secondary" spacing={2}>
           <AppIcon name="clock" size={15} />
           <Text fontSize="sm" fontWeight="semibold">
             Recent Searches

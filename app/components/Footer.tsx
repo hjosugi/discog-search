@@ -12,14 +12,14 @@ export function Footer() {
   return (
     <Box
       as="footer"
-      bg="white"
+      bg="bg.surface"
       borderTopWidth="1px"
-      borderColor="gray.200"
+      borderColor="border.default"
     >
       <Container maxW="1100px" px={{ base: 4, md: 6 }} py={4}>
         <HStack
           align="center"
-          color="gray.600"
+          color="text.muted"
           flexWrap="wrap"
           fontSize="sm"
           justify="space-between"
@@ -29,7 +29,7 @@ export function Footer() {
             Data provided by{" "}
             <Link
               href="https://www.discogs.com/"
-              color="blue.700"
+              color="text.link"
               fontWeight="semibold"
               isExternal
             >
@@ -39,7 +39,7 @@ export function Footer() {
           </Text>
           <Link
             href="https://github.com/hjosugi/discog-search"
-            color="blue.700"
+            color="text.link"
             fontWeight="semibold"
             isExternal
           >

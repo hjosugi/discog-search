@@ -8,7 +8,7 @@ The app runs on Cloudflare Workers through the Cloudflare Vite plugin. Search us
 
 - React 19 and React Router v7 Framework Mode
 - Elysia API routes with Eden Treaty client calls
-- Chakra UI with a small amount of Tailwind CSS
+- Chakra UI v2 as the only styling system (theme and semantic color tokens in `app/theme.ts`)
 - Cloudflare Workers and `wrangler`
 - Bun 1.3.14+, Node.js 20+
 - Vitest for unit tests and Playwright for a mocked end-to-end search flow

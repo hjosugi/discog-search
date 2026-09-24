@@ -203,6 +203,24 @@ It handles:
 This keeps API failures from becoming application crashes and reduces repeat
 calls during typing and navigation.
 
+## Styling
+
+Chakra UI v2 is the only styling system. The theme lives in `app/theme.ts` and
+is passed to `ChakraProvider` in `app/root.tsx`; there is no Tailwind, PostCSS,
+or global stylesheet.
+
+Components use semantic color tokens instead of raw palette values:
+
+- `bg.canvas`, `bg.surface`, `bg.subtle`, `bg.muted`, `bg.accent`, and
+  `bg.selected` for page, card, and state backgrounds;
+- `border.default`, `border.selected`, and `border.hover` for borders;
+- `text.default`, `text.secondary`, `text.muted`, `text.subtle`, `text.icon`,
+  `text.accent`, `text.link`, and `text.linkHover` for text and icons;
+- `logo.bg` and `logo.fg` for the header mark.
+
+New UI should reuse these tokens (or add a new semantic token in
+`app/theme.ts`) rather than hard-coding `white` / `gray.*` / `blue.*` values.
+
 ## React Router v7
 
 The app runs on React Router v7 Framework Mode in SPA mode with a custom Elysia

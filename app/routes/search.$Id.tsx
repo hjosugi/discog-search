@@ -135,21 +135,21 @@ export function ErrorBoundary() {
     <Box
       maxW="760px"
       mx="auto"
-      bg="white"
+      bg="bg.surface"
       borderWidth="1px"
-      borderColor="gray.200"
+      borderColor="border.default"
       borderRadius="md"
       p={5}
     >
       <HStack spacing={2} mb={2}>
-        <Text color="blue.600">
+        <Text color="text.accent">
           <AppIcon name="disc" size={18} />
         </Text>
         <Heading as="h1" size="md">
           Album details unavailable
         </Heading>
       </HStack>
-      <Text color="gray.600" fontSize="sm" mb={4}>
+      <Text color="text.muted" fontSize="sm" mb={4}>
         {status} / {message}
       </Text>
       <Button
@@ -230,20 +230,20 @@ export default function AlbumView() {
               borderRadius="md"
             />
           ) : (
-            <Box boxSize={{ base: "150px", md: "190px" }} bg="gray.100" />
+            <Box boxSize={{ base: "150px", md: "190px" }} bg="bg.muted" />
           )}
 
           <VStack align="stretch" spacing={4} flex="1">
             <Box>
               <HStack align="center" spacing={2} mb={1}>
-                <Text color="gray.500">
+                <Text color="text.subtle">
                   <AppIcon name="disc" size={18} />
                 </Text>
                 <Heading as="h1" size={{ base: "md", md: "lg" }}>
                   {release.title}
                 </Heading>
               </HStack>
-              <Text color="gray.600" fontSize="sm">
+              <Text color="text.muted" fontSize="sm">
                 {artistName}
                 {release.year ? ` / ${release.year}` : ""}
               </Text>
@@ -251,13 +251,13 @@ export default function AlbumView() {
 
             {selectedTrack && (
               <Box
-                bg="white"
+                bg="bg.surface"
                 borderRadius="md"
                 borderWidth="1px"
-                borderColor="gray.200"
+                borderColor="border.default"
                 p={3}
               >
-                <HStack color="gray.600" fontSize="xs" mb={1} spacing={1}>
+                <HStack color="text.muted" fontSize="xs" mb={1} spacing={1}>
                   <AppIcon name="music" size={14} />
                   <Text>Selected Track</Text>
                 </HStack>
@@ -266,7 +266,7 @@ export default function AlbumView() {
                     <Heading as="h2" size="md">
                       {selectedTrack.title}
                     </Heading>
-                    <Text fontSize="sm" color="gray.600">
+                    <Text fontSize="sm" color="text.muted">
                       {selectedTrack.position}
                       {selectedTrack.duration ? ` / ${selectedTrack.duration}` : ""}
                     </Text>
@@ -317,9 +317,9 @@ export default function AlbumView() {
 
         <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={5} mt={6}>
           <Box
-            bg="white"
+            bg="bg.surface"
             borderWidth="1px"
-            borderColor="gray.200"
+            borderColor="border.default"
             borderRadius="md"
             p={4}
           >
@@ -357,7 +357,7 @@ export default function AlbumView() {
                       href={video.uri}
                       target="_blank"
                       rel="noreferrer"
-                      color="blue.600"
+                      color="text.accent"
                       fontSize="sm"
                     >
                       {video.title}
@@ -369,9 +369,9 @@ export default function AlbumView() {
           </Box>
 
           <Box
-            bg="white"
+            bg="bg.surface"
             borderWidth="1px"
-            borderColor="gray.200"
+            borderColor="border.default"
             borderRadius="md"
             p={4}
           >
@@ -390,10 +390,10 @@ export default function AlbumView() {
                     to={`/search/${detailId}?${params.toString()}`}
                     p={2}
                     borderRadius="md"
-                    bg={isSelected ? "blue.50" : "transparent"}
+                    bg={isSelected ? "bg.selected" : "transparent"}
                     borderWidth="1px"
-                    borderColor={isSelected ? "blue.200" : "transparent"}
-                    _hover={{ bg: isSelected ? "blue.50" : "gray.50" }}
+                    borderColor={isSelected ? "border.selected" : "transparent"}
+                    _hover={{ bg: isSelected ? "bg.selected" : "bg.subtle" }}
                   >
                     <HStack justify="space-between" align="start">
                       <Box>
@@ -403,12 +403,12 @@ export default function AlbumView() {
                         >
                           {track.title}
                         </Text>
-                        <Text fontSize="xs" color="gray.600">
+                        <Text fontSize="xs" color="text.muted">
                           {track.position}
                         </Text>
                       </Box>
                       {track.duration && (
-                        <Text fontSize="xs" color="gray.600">
+                        <Text fontSize="xs" color="text.muted">
                           {track.duration}
                         </Text>
                       )}
@@ -444,7 +444,7 @@ function DetailBreadcrumb({
     <HStack
       as="nav"
       aria-label="Breadcrumb"
-      color="gray.600"
+      color="text.muted"
       fontSize="sm"
       mb={4}
       spacing={2}
@@ -452,14 +452,14 @@ function DetailBreadcrumb({
       <Link
         as={RouterLink}
         to={`/search${backQuery ? `?${backQuery}` : ""}`}
-        color="blue.700"
+        color="text.link"
         fontWeight="semibold"
-        _hover={{ color: "blue.800", textDecoration: "underline" }}
+        _hover={{ color: "text.linkHover", textDecoration: "underline" }}
       >
         Search
       </Link>
       <Text aria-hidden="true">&gt;</Text>
-      <Text aria-current="page" color="gray.700" noOfLines={1}>
+      <Text aria-current="page" color="text.secondary" noOfLines={1}>
         {albumTitle}
       </Text>
     </HStack>
@@ -469,7 +469,7 @@ function DetailBreadcrumb({
 function SectionTitle({ children }: { children: ReactNode }) {
   return (
     <HStack spacing={2} mb={3}>
-      <Text color="blue.600">
+      <Text color="text.accent">
         <AppIcon name="spark" size={15} />
       </Text>
       <Heading as="h2" size="sm">
@@ -488,7 +488,7 @@ function CreditList({
 }) {
   if (credits.length === 0) {
     return (
-      <Text color="gray.600" fontSize="sm">
+      <Text color="text.muted" fontSize="sm">
         {emptyText || "No matching credits were found."}
       </Text>
     )
@@ -501,26 +501,26 @@ function CreditList({
           key={`${credit.name}-${credit.role}-${credit.tracks}-${credit.source}`}
           p={3}
           borderWidth="1px"
-          borderColor="gray.200"
+          borderColor="border.default"
           borderRadius="md"
-          bg="gray.50"
+          bg="bg.subtle"
         >
           <HStack justify="space-between" align="start" spacing={3}>
             <HStack align="start" spacing={2}>
-              <Text color="gray.500" mt="2px">
+              <Text color="text.subtle" mt="2px">
                 <AppIcon name="user" size={15} />
               </Text>
               <Box>
                 <Link
                   as={RouterLink}
                   to={buildCreditSearchPath(credit.name)}
-                  color="blue.700"
+                  color="text.link"
                   fontWeight="bold"
-                  _hover={{ color: "blue.800", textDecoration: "underline" }}
+                  _hover={{ color: "text.linkHover", textDecoration: "underline" }}
                 >
                   {credit.name}
                 </Link>
-                <Text fontSize="sm" color="gray.700">
+                <Text fontSize="sm" color="text.secondary">
                   {credit.role}
                 </Text>
               </Box>
