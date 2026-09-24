@@ -102,7 +102,7 @@ app/routes/search._index.tsx
         -> searchDiscogsAlbums()
           -> buildSearchParams()
           -> fetchSearchPages()
-            -> ctx.discogs.fetch()
+            -> ctx.discogs.search()
         -> rankSearchResults()
 
 app/components/ResultList.tsx
@@ -112,7 +112,7 @@ app/routes/search.$Id.tsx
   clientLoader()
     -> Eden Treaty client
     -> GET /api/releases/:id
-      -> fetchDiscogsRelease() or fetchDiscogsMaster()
+      -> ctx.discogs.getRelease() / ctx.discogs.getMaster()
       -> findBestTrackMatch()
   -> getTrackCredits()
     -> creditAppliesToTrack()
@@ -189,16 +189,28 @@ The Elysia app exposes:
 - `GET /api/suggestions`
 - `GET /api/releases/:id`
 
-`app/server/discogs.ts` provides the decorated Discogs client as `ctx.discogs`.
-It handles:
+The Discogs layer lives in `app/server/discogs/`:
 
-- `DISCOGS_TOKEN` auth, with key/secret fallback,
-- query string construction,
-- a 10 minute in-memory response cache,
-- pending request coalescing,
-- a short global cooldown after HTTP 429 responses,
-- limited-size Discogs error-body reads,
-- typed `DiscogsFetchError` values for API-level error handling.
+- `client.ts` is the low-level HTTP client. It adds `DISCOGS_TOKEN` auth (with
+  key/secret fallback), builds query strings, caches responses for 10 minutes,
+  coalesces duplicate in-flight requests, applies a cooldown after HTTP 429
+  responses, and reads at most 2 KB of Discogs error bodies.
+- `api.ts` exposes typed endpoint functions (`search`, `getMaster`,
+  `getRelease`). Each validates the JSON payload against a TypeBox schema from
+  `schemas.ts`; `app/types.ts` re-exports the types derived from those schemas.
+- `errors.ts` defines `DiscogsFetchError` (any failed request),
+  `DiscogsRateLimitError` (HTTP 429 or an active cooldown), and
+  `DiscogsResponseError` (payload failed schema validation, surfaced as 502).
+- `index.ts` is the Elysia plugin that decorates the typed API as
+  `ctx.discogs`.
+
+Rate limiting is an error, not a special response shape: the client throws
+`DiscogsRateLimitError`, and `toApiError()` in `app/server/data.ts` is the one
+place that maps Discogs errors to an HTTP status, a stable error `code`
+(`discogs_auth`, `discogs_rate_limited`, `discogs_not_found`,
+`discogs_bad_response`, `discogs_error`, `bad_request`, `internal`), and the
+user-facing message. Search keeps already loaded result pages when only a later
+page is rate limited and reports the rate limit alongside them.
 
 This keeps API failures from becoming application crashes and reduces repeat
 calls during typing and navigation.

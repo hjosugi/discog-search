@@ -4,8 +4,12 @@ import type {
   SearchParam,
   SearchResult,
 } from "../types"
-import type { DiscogsClient } from "./discogs"
-import { DiscogsFetchError } from "./discogs"
+import type { DiscogsApi } from "./discogs"
+import {
+  DiscogsFetchError,
+  DiscogsRateLimitError,
+  DiscogsResponseError,
+} from "./discogs/errors"
 import { searchDiscogsAlbums } from "../utils/discogsSearch"
 import {
   DEFAULT_PAGINATION,
@@ -24,6 +28,7 @@ export type SearchApiData = {
     reachedPageLimit: boolean
   }
   errorMessage?: string
+  errorCode?: ApiErrorCode
 }
 
 export type SuggestionApiData = {
@@ -41,23 +46,34 @@ export type ReleaseApiData = {
   detailKind: "master" | "release"
 }
 
-type RateLimitedResponse = {
-  rateLimited?: boolean
-}
+/**
+ * Stable machine-readable error codes returned next to the English message,
+ * so the UI can show its own localized text.
+ */
+export type ApiErrorCode =
+  | "discogs_auth"
+  | "discogs_rate_limited"
+  | "discogs_not_found"
+  | "discogs_bad_response"
+  | "discogs_error"
+  | "bad_request"
+  | "internal"
 
 export class ApiHttpError extends Error {
   status: number
+  code: ApiErrorCode
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code: ApiErrorCode) {
     super(message)
     this.name = "ApiHttpError"
     this.status = status
+    this.code = code
   }
 }
 
 export async function getSearchApiData(
   searchParams: URLSearchParams,
-  discogs: DiscogsClient
+  discogs: DiscogsApi
 ): Promise<SearchApiData> {
   const searchState = getSearchState(searchParams)
   const { credit, song, genre, year, country, format, sort, page } = searchState
@@ -77,7 +93,7 @@ export async function getSearchApiData(
         format,
         page,
       },
-      discogs.fetch
+      discogs.search
     )
     const results = rankSearchResults(
       filterResultsByDecade(searchResults.results, searchState),
@@ -89,29 +105,32 @@ export async function getSearchApiData(
       { sort }
     )
 
-    return {
-      results,
-      pagination: searchResults.pagination,
-      errorMessage: searchResults.rateLimited
-        ? "Discogs is cooling down after rate limiting. Cached results will be used when available."
-        : undefined,
+    if (searchResults.rateLimited) {
+      const partialError = toApiError(new DiscogsRateLimitError(Date.now()))
+      return {
+        results,
+        pagination: searchResults.pagination,
+        errorMessage: partialError.message,
+        errorCode: partialError.code,
+      }
     }
+
+    return { results, pagination: searchResults.pagination }
   } catch (error) {
-    if (!isExpectedDiscogsSearchError(error)) {
-      console.error("Failed to fetch Discogs search results:", error)
-    }
+    const apiError = toApiError(error, "search")
 
     return {
       results: [],
       pagination: DEFAULT_PAGINATION,
-      errorMessage: getSearchErrorMessage(error),
+      errorMessage: apiError.message,
+      errorCode: apiError.code,
     }
   }
 }
 
 export async function getSuggestionsApiData(
   searchParams: URLSearchParams,
-  discogs: DiscogsClient
+  discogs: DiscogsApi
 ): Promise<SuggestionApiData> {
   const song = (searchParams.get("song") || searchParams.get("q") || "").trim()
   const credit = (
@@ -136,19 +155,11 @@ export async function getSuggestionsApiData(
   }
 
   try {
-    const searchResults = await discogs.fetch<{
-      results?: SearchResult[]
-      rateLimited?: boolean
-    }>("database/search", params)
-    if (searchResults.rateLimited) {
-      return emptySuggestions()
-    }
-
+    const searchResults = await discogs.search(params)
     return { suggestions: (searchResults.results || []).slice(0, 5) }
   } catch (error) {
-    if (!isExpectedDiscogsSuggestionError(error)) {
-      console.error("Failed to fetch Discogs suggestions:", error)
-    }
+    // Suggestions are best-effort: log unexpected failures, show nothing.
+    toApiError(error, "suggestions")
     return emptySuggestions()
   }
 }
@@ -160,7 +171,7 @@ export async function getReleaseApiData({
 }: {
   id: string
   searchParams: URLSearchParams
-  discogs: DiscogsClient
+  discogs: DiscogsApi
 }): Promise<ReleaseApiData> {
   const resultKind = searchParams.get("kind") === "release" ? "release" : "master"
   const requestedTrack = searchParams.get("track")
@@ -168,22 +179,22 @@ export async function getReleaseApiData({
   const roleFilter = searchParams.get("role") || ""
 
   if (!id) {
-    throw new ApiHttpError("Album ID is required", 400)
+    throw new ApiHttpError("Album ID is required", 400, "bad_request")
   }
 
   try {
     const release =
-      resultKind === "release" ? await fetchDiscogsRelease(id, discogs) : null
-    const master = release
+      resultKind === "release" ? await discogs.getRelease(id) : null
+    const master: DiscogsMaster = release
       ? release.master_id
-        ? await fetchDiscogsMaster(release.master_id, discogs)
-        : (release as DiscogsMaster)
-      : await fetchDiscogsMaster(id, discogs)
-    const resolvedRelease =
+        ? await discogs.getMaster(release.master_id)
+        : release
+      : await discogs.getMaster(id)
+    const resolvedRelease: DiscogsRelease =
       release ||
       (master.main_release
-        ? await fetchDiscogsRelease(master.main_release, discogs)
-        : (master as DiscogsRelease))
+        ? await discogs.getRelease(master.main_release)
+        : master)
     const selectedTrackPosition =
       requestedTrack ||
       findBestTrackMatch(resolvedRelease.tracklist || master.tracklist || [], searchQuery)
@@ -201,97 +212,76 @@ export async function getReleaseApiData({
       detailKind: resultKind,
     }
   } catch (error) {
-    if (error instanceof ApiHttpError) {
-      throw error
-    }
-    if (error instanceof DiscogsFetchError) {
-      if (!isExpectedDiscogsAlbumError(error)) {
-        console.error("Failed to fetch album data:", error)
-      }
-      throw new ApiHttpError(getAlbumErrorMessage(error), error.status)
-    }
-
-    console.error("Failed to fetch album data:", error)
-    throw new ApiHttpError("Failed to fetch album data", 500)
+    throw toApiError(error, "album")
   }
-}
-
-async function fetchDiscogsMaster(id: string | number, discogs: DiscogsClient) {
-  const response = await discogs.fetch<DiscogsMaster | RateLimitedResponse>(
-    `masters/${id}`
-  )
-  if (isRateLimitedResponse(response)) {
-    throw new ApiHttpError("Discogs is cooling down after rate limiting.", 429)
-  }
-  return response
-}
-
-async function fetchDiscogsRelease(id: string | number, discogs: DiscogsClient) {
-  const response = await discogs.fetch<DiscogsRelease | RateLimitedResponse>(
-    `releases/${id}`
-  )
-  if (isRateLimitedResponse(response)) {
-    throw new ApiHttpError("Discogs is cooling down after rate limiting.", 429)
-  }
-  return response
 }
 
 function emptySuggestions(): SuggestionApiData {
   return { suggestions: [] }
 }
 
-function isRateLimitedResponse(
-  response: DiscogsMaster | DiscogsRelease | RateLimitedResponse
-): response is RateLimitedResponse {
-  return Boolean("rateLimited" in response && response.rateLimited)
-}
+type ErrorContext = "search" | "suggestions" | "album"
 
-function getSearchErrorMessage(error: unknown) {
+/**
+ * The single place that turns Discogs failures into API errors: it picks the
+ * HTTP status, the error code, and the user-facing message, and logs only the
+ * failures that are not an expected Discogs condition.
+ */
+export function toApiError(
+  error: unknown,
+  context: ErrorContext = "search"
+): ApiHttpError {
+  if (error instanceof ApiHttpError) return error
+
+  if (error instanceof DiscogsRateLimitError) {
+    return new ApiHttpError(
+      context === "album"
+        ? "Discogs rate limit was reached. Please wait a moment and try again."
+        : "Discogs rate limit was reached. Please wait a moment and search again.",
+      429,
+      "discogs_rate_limited"
+    )
+  }
+
+  if (error instanceof DiscogsResponseError) {
+    console.error(`Unexpected Discogs payload (${context}):`, error.message)
+    return new ApiHttpError(
+      "Discogs returned data in an unexpected format.",
+      502,
+      "discogs_bad_response"
+    )
+  }
+
   if (error instanceof DiscogsFetchError) {
     if (error.status === 401 || error.status === 403) {
-      return "Discogs rejected the request. Check DISCOGS_TOKEN, or DISCOGS_API_KEY and DISCOGS_API_SECRET, then restart the dev server."
+      return new ApiHttpError(
+        "Discogs rejected the request. Check DISCOGS_TOKEN, or DISCOGS_API_KEY and DISCOGS_API_SECRET, then restart the dev server.",
+        error.status,
+        "discogs_auth"
+      )
     }
-    if (error.status === 429) {
-      return "Discogs rate limit was reached. Please wait a moment and search again."
+    if (error.status === 404 && context === "album") {
+      return new ApiHttpError(
+        "This Discogs item could not be found.",
+        404,
+        "discogs_not_found"
+      )
     }
-    return error.message
+
+    console.error(`Discogs request failed (${context}):`, error)
+    return new ApiHttpError(
+      context === "album" ? "Failed to fetch album data." : error.message,
+      error.status >= 400 && error.status < 600 ? error.status : 502,
+      "discogs_error"
+    )
   }
 
-  return "Could not fetch Discogs search results. Please try again."
-}
-
-function isExpectedDiscogsSearchError(error: unknown) {
-  return (
-    error instanceof DiscogsFetchError &&
-    (error.status === 401 || error.status === 403 || error.status === 429)
+  console.error(`Failed to load Discogs data (${context}):`, error)
+  return new ApiHttpError(
+    context === "album"
+      ? "Failed to fetch album data."
+      : "Could not fetch Discogs search results. Please try again.",
+    500,
+    "internal"
   )
-}
-
-function isExpectedDiscogsSuggestionError(error: unknown) {
-  return (
-    error instanceof DiscogsFetchError &&
-    (error.status === 401 || error.status === 403 || error.status === 429)
-  )
-}
-
-function isExpectedDiscogsAlbumError(error: DiscogsFetchError) {
-  return (
-    error.status === 401 ||
-    error.status === 403 ||
-    error.status === 404 ||
-    error.status === 429
-  )
-}
-
-function getAlbumErrorMessage(error: DiscogsFetchError) {
-  if (error.status === 401 || error.status === 403) {
-    return "Discogs rejected the request. Check DISCOGS_TOKEN, then restart the dev server."
-  }
-  if (error.status === 404) {
-    return "This Discogs item could not be found."
-  }
-  if (error.status === 429) {
-    return "Discogs rate limit was reached. Please wait a moment and try again."
-  }
-  return "Failed to fetch album data."
 }

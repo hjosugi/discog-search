@@ -78,18 +78,14 @@ release-level credit に `tracks` 範囲がある場合は、その範囲が sel
 
 ## Rate Limit と Cache
 
-Discogs API 呼び出しは `app/server/discogs.ts` の Elysia plugin に集約しています。
+Discogs API 呼び出しは `app/server/discogs/` に集約しています。
 
-ここでやっていることは次です。
+- `client.ts`: `DISCOGS_TOKEN` (または `DISCOGS_API_KEY` / `DISCOGS_API_SECRET`) による auth、query parameter の組み立て、10 分の response cache、同じ URL への同時 request の coalescing、HTTP 429 のあとの cooldown、error body の読み取り上限
+- `api.ts`: `search` / `getMaster` / `getRelease` の型付き関数。Discogs の JSON は `schemas.ts` の TypeBox schema で検証してから返す (`app/types.ts` の型も schema から導出)
+- `errors.ts`: `DiscogsFetchError` / `DiscogsRateLimitError` (429 と cooldown 中) / `DiscogsResponseError` (schema 不一致、502 扱い)
+- `index.ts`: typed API を `ctx.discogs` として渡す Elysia plugin
 
-- `DISCOGS_TOKEN` を使った auth
-- `DISCOGS_API_KEY` / `DISCOGS_API_SECRET` fallback
-- query parameter の組み立て
-- 10 分の in-memory cache
-- 同じ URL への同時 request の coalescing
-- HTTP 429 のあと短い cooldown
-- error body の読み取り上限
-- expected error を `DiscogsFetchError` として Elysia API 側で扱う
+rate limit は `{ results: [], rateLimited: true }` のような特殊な戻り値ではなく `DiscogsRateLimitError` として throw します。HTTP status・error code・表示用 message への変換は `app/server/data.ts` の `toApiError()` 1 か所で行います。
 
 これにより、入力中の suggestions や同じ検索の再実行で Discogs を叩きすぎないようにしています。
 

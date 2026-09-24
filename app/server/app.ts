@@ -21,6 +21,7 @@ type ServerAppOptions = {
 
 const errorResponse = t.Object({
   error: t.String(),
+  code: t.Optional(t.String()),
 })
 
 const paginationResponse = t.Object({
@@ -34,6 +35,7 @@ const searchResponse = t.Object({
   results: t.Array(t.Any()),
   pagination: paginationResponse,
   errorMessage: t.Optional(t.String()),
+  errorCode: t.Optional(t.String()),
 })
 
 const suggestionsResponse = t.Object({
@@ -104,14 +106,17 @@ export function createServerApp({ env = {} }: ServerAppOptions = {}) {
     .use(discogsPlugin(env))
     .onError(({ code, error, status }) => {
       if (error instanceof ApiHttpError) {
-        return status(error.status, { error: error.message })
+        return status(error.status, { error: error.message, code: error.code })
       }
       if (code === "VALIDATION") {
-        return status(422, { error: "Invalid request parameters." })
+        return status(422, {
+          error: "Invalid request parameters.",
+          code: "bad_request",
+        })
       }
 
       console.error("Unhandled API error:", error)
-      return status(500, { error: "Internal server error." })
+      return status(500, { error: "Internal server error.", code: "internal" })
     })
     .get(
       "/api/search",
@@ -159,6 +164,7 @@ export function createServerApp({ env = {} }: ServerAppOptions = {}) {
           422: errorResponse,
           429: errorResponse,
           500: errorResponse,
+          502: errorResponse,
         },
       }
     )

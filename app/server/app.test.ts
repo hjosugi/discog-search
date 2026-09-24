@@ -23,6 +23,7 @@ describe("Elysia API", () => {
     expect(response.status).toBe(422)
     await expect(response.json()).resolves.toEqual({
       error: "Invalid request parameters.",
+      code: "bad_request",
     })
   })
 
@@ -89,6 +90,35 @@ describe("Elysia API", () => {
       release: { id: 1001, title: "Miles Davis - Nefertiti" },
     })
   })
+
+  it("returns a coded 502 when Discogs sends an unexpected payload", async () => {
+    stubDiscogsFetch()
+    const app = createServerApp({ env })
+
+    const response = await app.handle(
+      new Request("https://app.test/api/releases/666?kind=release")
+    )
+
+    expect(response.status).toBe(502)
+    await expect(response.json()).resolves.toEqual({
+      error: "Discogs returned data in an unexpected format.",
+      code: "discogs_bad_response",
+    })
+  })
+
+  it("returns a coded 404 for missing Discogs items", async () => {
+    stubDiscogsFetch()
+    const app = createServerApp({ env })
+
+    const response = await app.handle(
+      new Request("https://app.test/api/releases/404?kind=release")
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toMatchObject({
+      code: "discogs_not_found",
+    })
+  })
 })
 
 function stubDiscogsFetch() {
@@ -110,6 +140,10 @@ function stubDiscogsFetch() {
 
       if (url.pathname === "/releases/1001") {
         return Response.json(release)
+      }
+
+      if (url.pathname === "/releases/666") {
+        return Response.json({ id: "666", tracklist: "not-a-list" })
       }
 
       return Response.json({ message: "Not found" }, { status: 404 })

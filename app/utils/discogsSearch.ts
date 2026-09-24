@@ -1,5 +1,6 @@
-import { SearchParam, SearchResult } from "../types"
-import type { DiscogsFetch } from "../server/discogs"
+import type { SearchParam, SearchResult } from "../types"
+import type { DiscogsApi } from "../server/discogs"
+import { DiscogsRateLimitError } from "../server/discogs/errors"
 
 export const SEARCH_RESULTS_PER_PAGE = 100
 export const MAX_SEARCH_PAGES = 10
@@ -22,22 +23,19 @@ export type DiscogsSearchPagination = {
   reachedPageLimit: boolean
 }
 
-export type DiscogsSearchResponse = {
+export type DiscogsAlbumSearchResult = {
   results: SearchResult[]
   pagination: DiscogsSearchPagination
+  /**
+   * True when a later page hit the Discogs rate limit and the results only
+   * contain the pages fetched before it. A rate limit on the first page is
+   * thrown as `DiscogsRateLimitError` instead.
+   */
   rateLimited?: boolean
 }
 
-type DiscogsDatabaseSearchResponse = {
-  results?: SearchResult[]
-  pagination?: {
-    page: number
-    pages: number
-    items?: number
-    per_page?: number
-  }
-  rateLimited?: boolean
-}
+type DiscogsSearch = DiscogsApi["search"]
+type DiscogsSearchPage = Awaited<ReturnType<DiscogsSearch>>
 
 export async function searchDiscogsAlbums({
   credit,
@@ -47,7 +45,7 @@ export async function searchDiscogsAlbums({
   country = "",
   format = "",
   page = 1,
-}: DiscogsSearchFilters, discogsFetch: DiscogsFetch): Promise<DiscogsSearchResponse> {
+}: DiscogsSearchFilters, search: DiscogsSearch): Promise<DiscogsAlbumSearchResult> {
   const requestedPage = normalizeRequestedPage(page)
   const primaryParams = buildSearchParams({
     credit,
@@ -62,7 +60,7 @@ export async function searchDiscogsAlbums({
   const primary = await fetchSearchPages(
     primaryParams,
     requestedPage,
-    discogsFetch
+    search
   )
 
   if (primary.rateLimited || primary.results.length > 0 || !song) {
@@ -81,7 +79,7 @@ export async function searchDiscogsAlbums({
       useTrackSearch: false,
     }),
     requestedPage,
-    discogsFetch
+    search
   )
 }
 
@@ -115,8 +113,8 @@ function buildSearchParams({
 async function fetchSearchPages(
   params: SearchParam,
   requestedPage: number,
-  discogsFetch: DiscogsFetch
-): Promise<DiscogsSearchResponse> {
+  search: DiscogsSearch
+): Promise<DiscogsAlbumSearchResult> {
   const targetPage = normalizeRequestedPage(requestedPage)
   let allResults: SearchResult[] = []
   let wasRateLimited = false
@@ -130,11 +128,17 @@ async function fetchSearchPages(
   let nextPage = 1
 
   while (nextPage <= targetPage) {
-    const searchResults = await discogsFetch<DiscogsDatabaseSearchResponse>(
-      "database/search",
-      { ...params, page: nextPage }
-    )
-    wasRateLimited = wasRateLimited || Boolean(searchResults.rateLimited)
+    let searchResults: DiscogsSearchPage
+    try {
+      searchResults = await search({ ...params, page: nextPage })
+    } catch (error) {
+      // Keep the pages that already loaded when a later page is rate limited.
+      if (error instanceof DiscogsRateLimitError && nextPage > 1) {
+        wasRateLimited = true
+        break
+      }
+      throw error
+    }
     allResults = allResults.concat(searchResults.results || [])
     pagination = normalizePagination(
       searchResults.pagination,
@@ -144,7 +148,6 @@ async function fetchSearchPages(
     )
 
     if (
-      wasRateLimited ||
       !searchResults.pagination ||
       searchResults.pagination.page >= searchResults.pagination.pages ||
       nextPage >= targetPage
@@ -173,7 +176,7 @@ function normalizeRequestedPage(page: number) {
 }
 
 function normalizePagination(
-  pagination: DiscogsDatabaseSearchResponse["pagination"],
+  pagination: DiscogsSearchPage["pagination"],
   fallbackPage: number,
   fallbackPerPage: number,
   fallbackItems: number

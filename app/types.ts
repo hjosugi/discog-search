@@ -1,48 +1,14 @@
-interface DiscogsArtist {
-  id?: number
-  name: string
-  anv?: string
-  join?: string
-  role?: string
-  tracks?: string
-  resource_url?: string
-  thumbnail_url?: string
-}
-
-interface DiscogsImage {
-  uri?: string
-  uri150?: string
-  width?: number
-  height?: number
-  type?: string
-}
-
-export interface DiscogsVideo {
-  uri: string
-  title: string
-  description?: string
-  duration?: number
-  embed?: boolean
-}
-
-export interface ExtraArtist {
-  name: string
-  role: string
-  anv?: string
-  join?: string
-  tracks?: string
-  id?: number
-  resource_url?: string
-  thumbnail_url?: string
-}
-
-export interface TrackItem {
-  position: string
-  type_: string
-  title: string
-  duration?: string
-  extraartists?: ExtraArtist[]
-}
+// Discogs payload types are derived from the runtime schemas that validate
+// them at the API boundary (see app/server/discogs/schemas.ts). These are
+// type-only re-exports, so no schema code reaches the client bundle.
+export type {
+  DiscogsMaster,
+  DiscogsRelease,
+  DiscogsVideo,
+  ExtraArtist,
+  SearchResult,
+  TrackItem,
+} from "./server/discogs/schemas"
 
 export interface SearchParam
   extends Record<string, string | number | null | undefined> {
@@ -57,39 +23,4 @@ export interface SearchParam
   format?: string | null
   type: "master" | "release"
   per_page: number
-}
-
-export interface DiscogsMaster {
-  id: number
-  title: string
-  year?: number
-  artists?: DiscogsArtist[]
-  images?: DiscogsImage[]
-  tracklist?: TrackItem[]
-  extraartists?: ExtraArtist[]
-  main_release?: number
-  uri?: string
-}
-
-export interface DiscogsRelease extends DiscogsMaster {
-  videos?: DiscogsVideo[]
-  artists_sort?: string
-  master_id?: number
-}
-
-export interface SearchResult {
-  id: number
-  title: string
-  artist: string
-  thumb: string
-  country?: string
-  year?: string
-  format?: string[]
-  label?: string[]
-  type?: string
-  genre?: string[]
-  style?: string[]
-  barcode?: string[]
-  uri?: string
-  catno?: string
 }

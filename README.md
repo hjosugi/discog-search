@@ -100,7 +100,7 @@ GitHub Actions runs `lint`, `typecheck`, `test`, and `build` on pull requests an
 
 ## Discogs API Notes
 
-Discogs search is rate-limited. The Elysia server plugin in `app/server/discogs.ts` reads Worker env bindings, adds authentication, caches responses for 10 minutes, coalesces duplicate in-flight requests, and applies a short cooldown after HTTP 429 responses.
+Discogs search is rate-limited. The Discogs layer in `app/server/discogs/` reads Worker env bindings, adds authentication, caches responses for 10 minutes, coalesces duplicate in-flight requests, applies a short cooldown after HTTP 429 responses (surfaced as `DiscogsRateLimitError`), and validates every payload against a TypeBox schema before the API uses it.
 
 The app uses Discogs database search filters such as `credit`, `track`, `genre`, and `type=release`. Role filters like `drums` or `bass` are local detail-page filters over loaded `extraartists.role` values because Discogs public search does not expose a stable instrument-role filter.
 

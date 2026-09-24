@@ -1,22 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { searchDiscogsAlbums } from "./discogsSearch"
-import type { DiscogsFetch } from "../server/discogs"
+import type { DiscogsApi } from "../server/discogs"
+import { DiscogsRateLimitError } from "../server/discogs/errors"
 
 describe("searchDiscogsAlbums", () => {
-  const discogsFetchMock = vi.fn()
-  const discogsFetch: DiscogsFetch = <T = unknown>(
-    endpoint: string,
-    params?: Record<string, string | number | null | undefined>
-  ) =>
-    discogsFetchMock(endpoint, params) as Promise<T>
+  const searchMock = vi.fn()
+  const search: DiscogsApi["search"] = (params) => searchMock(params)
 
   beforeEach(() => {
-    discogsFetchMock.mockReset()
+    searchMock.mockReset()
   })
 
   it("fetches cumulative pages up to the requested page", async () => {
-    discogsFetchMock
+    searchMock
       .mockResolvedValueOnce({
         pagination: { page: 1, pages: 3, items: 205, per_page: 100 },
         results: [{ id: 1, title: "Page 1", artist: "", thumb: "" }],
@@ -33,7 +30,7 @@ describe("searchDiscogsAlbums", () => {
         genre: "",
         page: 2,
       },
-      discogsFetch
+      search
     )
 
     expect(response.results.map((result) => result.id)).toEqual([1, 2])
@@ -43,20 +40,18 @@ describe("searchDiscogsAlbums", () => {
       totalItems: 205,
       perPage: 100,
     })
-    expect(discogsFetchMock).toHaveBeenNthCalledWith(
+    expect(searchMock).toHaveBeenNthCalledWith(
       1,
-      "database/search",
       expect.objectContaining({ credit: "Tony Williams", page: 1 })
     )
-    expect(discogsFetchMock).toHaveBeenNthCalledWith(
+    expect(searchMock).toHaveBeenNthCalledWith(
       2,
-      "database/search",
       expect.objectContaining({ credit: "Tony Williams", page: 2 })
     )
   })
 
   it("passes exact year, country, and format filters to Discogs", async () => {
-    discogsFetchMock.mockResolvedValueOnce({
+    searchMock.mockResolvedValueOnce({
       pagination: { page: 1, pages: 1, items: 1, per_page: 100 },
       results: [{ id: 1, title: "Filtered", artist: "", thumb: "" }],
     })
@@ -71,11 +66,10 @@ describe("searchDiscogsAlbums", () => {
         format: "LP",
         page: 1,
       },
-      discogsFetch
+      search
     )
 
-    expect(discogsFetchMock).toHaveBeenCalledWith(
-      "database/search",
+    expect(searchMock).toHaveBeenCalledWith(
       expect.objectContaining({
         credit: "Herbie Hancock",
         track: "Watermelon Man",
@@ -86,5 +80,33 @@ describe("searchDiscogsAlbums", () => {
         type: "release",
       })
     )
+  })
+
+  it("keeps loaded pages when a later page is rate limited", async () => {
+    searchMock
+      .mockResolvedValueOnce({
+        pagination: { page: 1, pages: 3, items: 205, per_page: 100 },
+        results: [{ id: 1, title: "Page 1" }],
+      })
+      .mockRejectedValueOnce(new DiscogsRateLimitError(Date.now() + 1000))
+
+    const response = await searchDiscogsAlbums(
+      { credit: "Tony Williams", song: "", genre: "", page: 2 },
+      search
+    )
+
+    expect(response.rateLimited).toBe(true)
+    expect(response.results.map((result) => result.id)).toEqual([1])
+  })
+
+  it("rethrows a rate limit on the first page", async () => {
+    searchMock.mockRejectedValueOnce(new DiscogsRateLimitError(Date.now() + 1000))
+
+    await expect(
+      searchDiscogsAlbums(
+        { credit: "Tony Williams", song: "", genre: "", page: 1 },
+        search
+      )
+    ).rejects.toBeInstanceOf(DiscogsRateLimitError)
   })
 })

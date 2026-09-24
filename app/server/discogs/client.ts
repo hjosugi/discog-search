@@ -1,14 +1,4 @@
-import { Elysia } from "elysia"
-
-export class DiscogsFetchError extends Error {
-  status: number
-
-  constructor(message: string, status: number) {
-    super(message)
-    this.name = "DiscogsFetchError"
-    this.status = status
-  }
-}
+import { DiscogsFetchError, DiscogsRateLimitError } from "./errors"
 
 export type DiscogsEnv = {
   DISCOGS_API_BASE_URL?: string
@@ -17,13 +7,15 @@ export type DiscogsEnv = {
   DISCOGS_API_SECRET?: string
 }
 
-export type DiscogsFetch = <T = unknown>(
-  endpoint: string,
-  params?: Record<string, string | number | null | undefined>
-) => Promise<T>
+export type DiscogsQuery = Record<string, string | number | null | undefined>
 
+/**
+ * Low-level Discogs HTTP client: authentication, query building, response
+ * caching, in-flight request coalescing, and the 429 cooldown. It returns raw
+ * JSON; use the typed functions in `./api` to get validated payloads.
+ */
 export type DiscogsClient = {
-  fetch: DiscogsFetch
+  request(endpoint: string, params?: DiscogsQuery): Promise<unknown>
 }
 
 type CacheEntry = {
@@ -31,7 +23,7 @@ type CacheEntry = {
   value: unknown
 }
 
-type MemoryCache = {
+export type MemoryCache = {
   responses: Map<string, CacheEntry>
   pending: Map<string, Promise<unknown>>
   rateLimitedUntil: number
@@ -42,10 +34,14 @@ const RATE_LIMIT_FALLBACK_MS = 30 * 1000
 const MAX_ERROR_BODY_BYTES = 2048
 const DISCOGS_API_BASE_URL = "https://api.discogs.com"
 
-const globalMemoryCache: MemoryCache = {
-  responses: new Map(),
-  pending: new Map(),
-  rateLimitedUntil: 0,
+const globalMemoryCache = createMemoryCache()
+
+export function createMemoryCache(): MemoryCache {
+  return {
+    responses: new Map(),
+    pending: new Map(),
+    rateLimitedUntil: 0,
+  }
 }
 
 export function createDiscogsClient(
@@ -53,10 +49,7 @@ export function createDiscogsClient(
   cache = globalMemoryCache
 ): DiscogsClient {
   return {
-    async fetch<T = unknown>(
-      endpoint: string,
-      params: Record<string, string | number | null | undefined> = {}
-    ) {
+    async request(endpoint: string, params: DiscogsQuery = {}) {
       const url = getDiscogsApiUrl(endpoint, env)
 
       Object.entries(params).forEach(([key, value]) => {
@@ -66,13 +59,13 @@ export function createDiscogsClient(
       })
 
       if (Date.now() < cache.rateLimitedUntil) {
-        return getRateLimitedResponse() as T
+        throw new DiscogsRateLimitError(cache.rateLimitedUntil)
       }
 
       const cacheKey = url.toString()
       const cached = cache.responses.get(cacheKey)
       if (cached && cached.expiresAt > Date.now()) {
-        return cached.value as T
+        return cached.value
       }
       if (cached) {
         cache.responses.delete(cacheKey)
@@ -80,7 +73,7 @@ export function createDiscogsClient(
 
       const pendingRequest = cache.pending.get(cacheKey)
       if (pendingRequest) {
-        return pendingRequest as Promise<T>
+        return pendingRequest
       }
 
       const request = fetch(url.toString(), { headers: getDiscogsHeaders(env) })
@@ -96,18 +89,14 @@ export function createDiscogsClient(
               .join(": ")
 
             if (response.status === 429) {
-              const ttl = getRateLimitTtl(response)
-              cache.rateLimitedUntil = Date.now() + ttl
-              cache.responses.set(cacheKey, {
-                expiresAt: cache.rateLimitedUntil,
-                value: getRateLimitedResponse(),
-              })
+              cache.rateLimitedUntil = Date.now() + getRateLimitTtl(response)
+              throw new DiscogsRateLimitError(cache.rateLimitedUntil, message)
             }
 
             throw new DiscogsFetchError(message, response.status)
           }
 
-          const json = await response.json()
+          const json: unknown = await response.json()
           cache.responses.set(cacheKey, {
             expiresAt: Date.now() + CACHE_TTL_MS,
             value: json,
@@ -119,16 +108,9 @@ export function createDiscogsClient(
         })
 
       cache.pending.set(cacheKey, request)
-      return request as Promise<T>
+      return request
     },
   }
-}
-
-export function discogsPlugin(env: DiscogsEnv = {}) {
-  return new Elysia({ name: "discogs" }).decorate(
-    "discogs",
-    createDiscogsClient(env)
-  )
 }
 
 function getDiscogsApiUrl(endpoint: string, env: DiscogsEnv) {
@@ -151,14 +133,6 @@ function getDiscogsHeaders(env: DiscogsEnv) {
   }
 
   return headers
-}
-
-function getRateLimitedResponse() {
-  return {
-    results: [],
-    pagination: { page: 1, pages: 1 },
-    rateLimited: true,
-  }
 }
 
 function getRateLimitTtl(response: Response) {
