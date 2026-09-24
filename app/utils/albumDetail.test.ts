@@ -4,6 +4,8 @@ import {
   buildCreditSearchPath,
   buildDetailHref,
   buildSearchListHref,
+  buildVersionHref,
+  getMasterId,
   getMatchingVideos,
 } from "./albumDetail"
 import { buildPlaybackQuery, buildStreamingLinks } from "./streaming"
@@ -33,6 +35,21 @@ describe("album detail links", () => {
       "/search?credit=Ron+Carter"
     )
     expect(buildCreditSearchPath("Ron Carter")).toBe("/search?credit=Ron+Carter")
+  })
+})
+
+describe("other versions", () => {
+  it("links to a version as a release without the selected track", () => {
+    expect(
+      buildVersionHref(1002, "credit=Tony+Williams&track=A1&role=drums")
+    ).toBe("/search/1002?credit=Tony+Williams&role=drums&kind=release")
+  })
+
+  it("finds the master id for releases and masters", () => {
+    const master = { id: 42, title: "M" }
+    expect(getMasterId({ id: 1, title: "R", master_id: 42 }, master, "release")).toBe(42)
+    expect(getMasterId({ id: 42, title: "M" }, master, "master")).toBe(42)
+    expect(getMasterId({ id: 1, title: "R" }, { id: 1, title: "R" }, "release")).toBeNull()
   })
 })
 

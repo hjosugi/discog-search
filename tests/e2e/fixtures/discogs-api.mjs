@@ -21,6 +21,7 @@ const release = {
   id: 1001,
   title: "Miles Davis - Nefertiti",
   year: 1968,
+  master_id: 42,
   artists_sort: "Miles Davis",
   artists: [{ name: "Miles Davis" }],
   uri: "https://www.discogs.com/release/1001",
@@ -47,6 +48,64 @@ const release = {
       title: "Nefertiti live footage",
       duration: 95,
       embed: true,
+    },
+  ],
+}
+
+const master = {
+  id: 42,
+  title: "Nefertiti",
+  year: 1968,
+  main_release: 1001,
+  artists: [{ name: "Miles Davis" }],
+  tracklist: release.tracklist,
+}
+
+const japanReissue = {
+  ...release,
+  id: 1002,
+  year: 1986,
+  country: "Japan",
+  uri: "https://www.discogs.com/release/1002",
+  extraartists: [
+    { name: "Ron Carter", role: "Bass", tracks: "A1 to B1" },
+    { name: "Miles Davis", role: "Trumpet", tracks: "A1" },
+  ],
+  videos: [],
+}
+
+const masterVersions = {
+  pagination: { page: 1, pages: 1, items: 3, per_page: 100 },
+  versions: [
+    {
+      id: 1001,
+      title: "Nefertiti",
+      format: "Vinyl, LP, Album, Stereo",
+      label: "Columbia",
+      catno: "CS 9594",
+      country: "US",
+      released: "1968",
+      major_formats: ["Vinyl"],
+    },
+    {
+      id: 1003,
+      title: "Nefertiti",
+      format: "Vinyl, LP, Album",
+      label: "CBS",
+      catno: "S 63248",
+      country: "UK",
+      released: "1968",
+      major_formats: ["Vinyl"],
+    },
+    {
+      id: 1002,
+      title: "Nefertiti",
+      format: "CD, Album, Reissue",
+      label: "CBS/Sony",
+      catno: "32DP 717",
+      country: "Japan",
+      released: "1986-06-01",
+      major_formats: ["CD"],
     },
   ],
 }
@@ -79,6 +138,18 @@ const server = http.createServer(async (request, response) => {
 
   if (url.pathname === "/releases/1001") {
     return sendJson(response, release)
+  }
+
+  if (url.pathname === "/releases/1002") {
+    return sendJson(response, japanReissue)
+  }
+
+  if (url.pathname === "/masters/42") {
+    return sendJson(response, master)
+  }
+
+  if (url.pathname === "/masters/42/versions") {
+    return sendJson(response, masterVersions)
   }
 
   const releaseMatch = url.pathname.match(/^\/releases\/(\d+)$/)

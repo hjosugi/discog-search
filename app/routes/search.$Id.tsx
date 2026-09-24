@@ -13,6 +13,7 @@ import { AlbumErrorState } from "~/components/album/AlbumErrorState"
 import { AlbumHeader } from "~/components/album/AlbumHeader"
 import { CreditList } from "~/components/album/CreditList"
 import { DetailBreadcrumb } from "~/components/album/DetailBreadcrumb"
+import { OtherVersions } from "~/components/album/OtherVersions"
 import { Panel } from "~/components/album/Panel"
 import { RoleFilterLinks } from "~/components/album/RoleFilterLinks"
 import { SectionTitle } from "~/components/album/SectionTitle"
@@ -24,6 +25,7 @@ import {
   buildSearchListHref,
   getArtistName,
   getCoverImage,
+  getMasterId,
   getMatchingVideos,
   getThumbnailImage,
   pickSelectedTrack,
@@ -129,6 +131,7 @@ export default function AlbumView() {
   )
   const artistName = getArtistName(release, master)
   const videos = getMatchingVideos(release.videos || [], selectedTrack?.title)
+  const masterId = getMasterId(release, master, detailKind)
 
   return (
     <Box maxW="1040px" mx="auto">
@@ -206,6 +209,17 @@ export default function AlbumView() {
           />
         </Panel>
       </SimpleGrid>
+
+      {masterId && (
+        <Panel mt={5}>
+          <OtherVersions
+            key={masterId}
+            masterId={masterId}
+            currentReleaseId={release.id}
+            backQuery={backQuery}
+          />
+        </Panel>
+      )}
 
       <Divider my={6} />
       <Button

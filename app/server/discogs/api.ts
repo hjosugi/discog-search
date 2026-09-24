@@ -4,10 +4,12 @@ import {
   DiscogsMasterSchema,
   DiscogsReleaseSchema,
   DiscogsSearchResponseSchema,
+  MasterVersionsResponseSchema,
   parseDiscogsResponse,
   type DiscogsMaster,
   type DiscogsRelease,
   type DiscogsSearchResponse,
+  type MasterVersionsResponse,
 } from "./schemas"
 
 /**
@@ -19,6 +21,10 @@ export type DiscogsApi = {
   search(params: SearchParam): Promise<DiscogsSearchResponse>
   getMaster(id: string | number): Promise<DiscogsMaster>
   getRelease(id: string | number): Promise<DiscogsRelease>
+  getMasterVersions(
+    id: string | number,
+    options: { page: number; perPage: number }
+  ): Promise<MasterVersionsResponse>
 }
 
 export function createDiscogsApi(client: DiscogsClient): DiscogsApi {
@@ -44,6 +50,19 @@ export function createDiscogsApi(client: DiscogsClient): DiscogsApi {
       return parseDiscogsResponse(
         DiscogsReleaseSchema,
         await client.request(endpoint),
+        endpoint
+      )
+    },
+    async getMasterVersions(id, { page, perPage }) {
+      const endpoint = `masters/${id}/versions`
+      return parseDiscogsResponse(
+        MasterVersionsResponseSchema,
+        await client.request(endpoint, {
+          page,
+          per_page: perPage,
+          sort: "released",
+          sort_order: "asc",
+        }),
         endpoint
       )
     },

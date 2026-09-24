@@ -6,6 +6,7 @@ export type {
   DiscogsRelease,
   DiscogsVideo,
   ExtraArtist,
+  MasterVersion,
   SearchResult,
   TrackItem,
 } from "./server/discogs/schemas"

@@ -198,6 +198,17 @@ without changing the upstream Discogs search request. Chips are built from the
 actual roles present on the selected track, such as `Trumpet` or `Vibraphone`,
 rather than from a fixed instrument list.
 
+When the album belongs to a Discogs master (a master page, or a release with a
+`master_id`), an "Other versions" panel loads `masters/{id}/versions` through
+`GET /api/masters/:id/versions` (100 per page, sorted by release date, with a
+"Load more" button and a local country/year/format/label filter). Reissues can
+carry different credits, so each row links to
+`/search/{releaseId}?kind=release` with the same search context; the selected
+track is dropped because track positions differ between pressings. The row for
+the release currently shown is marked with `aria-current` and a "Current"
+badge. The panel loads through the data-only client route
+`routes/masters.versions.tsx`, so it never blocks the main detail request.
+
 The Videos section shows up to three Discogs videos, preferring the ones whose
 title mentions the selected track. YouTube URLs (`watch?v=`, `youtu.be/`,
 `/embed/`, `/shorts/`, ...) are parsed by `app/utils/video.ts` and rendered as
@@ -223,6 +234,7 @@ The Elysia app exposes:
 - `GET /api/search`
 - `GET /api/suggestions`
 - `GET /api/releases/:id`
+- `GET /api/masters/:id/versions`
 
 The Discogs layer lives in `app/server/discogs/`:
 

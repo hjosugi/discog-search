@@ -4,6 +4,7 @@ import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker"
 import { discogsPlugin, type DiscogsEnv } from "./discogs"
 import {
   ApiHttpError,
+  getMasterVersionsApiData,
   getReleaseApiData,
   getSearchApiData,
   getSuggestionsApiData,
@@ -51,6 +52,16 @@ const releaseResponse = t.Object({
   backQuery: t.String(),
   detailId: t.String(),
   detailKind: t.String({ pattern: "^(master|release)$" }),
+})
+
+const masterVersionsResponse = t.Object({
+  masterId: t.String(),
+  versions: t.Array(t.Any()),
+  pagination: t.Object({
+    page: t.Number(),
+    totalPages: t.Number(),
+    totalItems: t.Number(),
+  }),
 })
 
 const searchQuery = t.Object({
@@ -160,6 +171,31 @@ export function createServerApp({ env = {} }: ServerAppOptions = {}) {
         response: {
           200: releaseResponse,
           400: errorResponse,
+          404: errorResponse,
+          422: errorResponse,
+          429: errorResponse,
+          500: errorResponse,
+          502: errorResponse,
+        },
+      }
+    )
+    .get(
+      "/api/masters/:id/versions",
+      ({ params, query, discogs }) =>
+        getMasterVersionsApiData({
+          id: params.id,
+          page: query.page ? Number(query.page) : 1,
+          discogs,
+        }),
+      {
+        params: t.Object({
+          id: t.String({ pattern: "^[0-9]+$" }),
+        }),
+        query: t.Object({
+          page: t.Optional(t.String({ pattern: "^$|^[1-9][0-9]{0,3}$" })),
+        }),
+        response: {
+          200: masterVersionsResponse,
           404: errorResponse,
           422: errorResponse,
           429: errorResponse,

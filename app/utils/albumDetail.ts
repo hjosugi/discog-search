@@ -41,6 +41,27 @@ export function buildDetailHref(
   return `/search/${detailId}${queryString ? `?${queryString}` : ""}`
 }
 
+/**
+ * Link to another release of the same master. The search context is kept,
+ * the selected track is dropped because positions differ between pressings.
+ */
+export function buildVersionHref(releaseId: number, backQuery: string) {
+  const params = new URLSearchParams(backQuery)
+  params.delete("track")
+  params.set("kind", "release")
+  return `/search/${releaseId}?${params.toString()}`
+}
+
+/** The Discogs master that groups this album's versions, if there is one. */
+export function getMasterId(
+  release: DiscogsRelease,
+  master: DiscogsMaster,
+  detailKind: DetailKind
+) {
+  if (release.master_id) return release.master_id
+  return detailKind === "master" ? master.id : null
+}
+
 export function buildSearchListHref(backQuery: string) {
   return `/search${backQuery ? `?${backQuery}` : ""}`
 }

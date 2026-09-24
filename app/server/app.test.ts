@@ -106,6 +106,30 @@ describe("Elysia API", () => {
     })
   })
 
+  it("serves master versions sorted by release date", async () => {
+    const fetchMock = stubDiscogsFetch()
+    const app = createServerApp({ env })
+
+    const response = await app.handle(
+      new Request("https://app.test/api/masters/42/versions?page=2")
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      masterId: "42",
+      versions: [expect.objectContaining({ id: 1001, country: "US" })],
+      pagination: { page: 2, totalPages: 2, totalItems: 101 },
+    })
+    const versionsUrl = new URL(String(fetchMock.mock.calls.at(-1)?.[0]))
+    expect(versionsUrl.pathname).toBe("/masters/42/versions")
+    expect(Object.fromEntries(versionsUrl.searchParams)).toEqual({
+      page: "2",
+      per_page: "100",
+      sort: "released",
+      sort_order: "asc",
+    })
+  })
+
   it("returns a coded 404 for missing Discogs items", async () => {
     stubDiscogsFetch()
     const app = createServerApp({ env })
@@ -140,6 +164,21 @@ function stubDiscogsFetch() {
 
       if (url.pathname === "/releases/1001") {
         return Response.json(release)
+      }
+
+      if (url.pathname === "/masters/42/versions") {
+        return Response.json({
+          pagination: { page: 2, pages: 2, items: 101, per_page: 100 },
+          versions: [
+            {
+              id: 1001,
+              title: "Nefertiti",
+              country: "US",
+              released: "1968",
+              format: "Vinyl, LP",
+            },
+          ],
+        })
       }
 
       if (url.pathname === "/releases/666") {

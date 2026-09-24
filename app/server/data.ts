@@ -1,6 +1,7 @@
 import type {
   DiscogsMaster,
   DiscogsRelease,
+  MasterVersion,
   SearchParam,
   SearchResult,
 } from "../types"
@@ -45,6 +46,18 @@ export type ReleaseApiData = {
   detailId: string
   detailKind: "master" | "release"
 }
+
+export type MasterVersionsApiData = {
+  masterId: string
+  versions: MasterVersion[]
+  pagination: {
+    page: number
+    totalPages: number
+    totalItems: number
+  }
+}
+
+export const MASTER_VERSIONS_PER_PAGE = 100
 
 /**
  * Stable machine-readable error codes returned next to the English message,
@@ -210,6 +223,36 @@ export async function getReleaseApiData({
       backQuery: searchParams.toString(),
       detailId: id,
       detailKind: resultKind,
+    }
+  } catch (error) {
+    throw toApiError(error, "album")
+  }
+}
+
+export async function getMasterVersionsApiData({
+  id,
+  page,
+  discogs,
+}: {
+  id: string
+  page: number
+  discogs: DiscogsApi
+}): Promise<MasterVersionsApiData> {
+  try {
+    const response = await discogs.getMasterVersions(id, {
+      page,
+      perPage: MASTER_VERSIONS_PER_PAGE,
+    })
+    const versions = response.versions || []
+
+    return {
+      masterId: id,
+      versions,
+      pagination: {
+        page: response.pagination?.page ?? page,
+        totalPages: response.pagination?.pages ?? page,
+        totalItems: response.pagination?.items ?? versions.length,
+      },
     }
   } catch (error) {
     throw toApiError(error, "album")

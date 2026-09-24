@@ -109,6 +109,23 @@ export const DiscogsSearchResponseSchema = Type.Object({
   results: Type.Optional(Type.Array(SearchResultSchema)),
 })
 
+export const MasterVersionSchema = Type.Object({
+  id: Type.Number(),
+  title: Type.String(),
+  format: Type.Optional(Type.String()),
+  label: Type.Optional(Type.String()),
+  country: Type.Optional(Type.String()),
+  released: Type.Optional(Type.String()),
+  catno: Type.Optional(Type.String()),
+  major_formats: Type.Optional(Type.Array(Type.String())),
+  thumb: Type.Optional(Type.String()),
+})
+
+export const MasterVersionsResponseSchema = Type.Object({
+  pagination: Type.Optional(DiscogsPaginationSchema),
+  versions: Type.Optional(Type.Array(MasterVersionSchema)),
+})
+
 export type ExtraArtist = Static<typeof ExtraArtistSchema>
 export type DiscogsVideo = Static<typeof DiscogsVideoSchema>
 export type TrackItem = Static<typeof TrackItemSchema>
@@ -116,6 +133,8 @@ export type DiscogsMaster = Static<typeof DiscogsMasterSchema>
 export type DiscogsRelease = Static<typeof DiscogsReleaseSchema>
 export type SearchResult = Static<typeof SearchResultSchema>
 export type DiscogsSearchResponse = Static<typeof DiscogsSearchResponseSchema>
+export type MasterVersion = Static<typeof MasterVersionSchema>
+export type MasterVersionsResponse = Static<typeof MasterVersionsResponseSchema>
 
 /**
  * Validates a Discogs JSON payload. `null` values are treated as missing
