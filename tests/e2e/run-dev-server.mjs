@@ -44,6 +44,14 @@ if (build.status !== 0) {
   process.exit(build.status ?? 1)
 }
 
+// The Worker caches Discogs responses through the Cache API, which wrangler
+// dev persists under .wrangler/state. Start every E2E run from an empty cache
+// so edited fixtures are never shadowed by responses cached in a prior run.
+rmSync(path.join(rootDir, ".wrangler", "state", "v3", "cache"), {
+  recursive: true,
+  force: true,
+})
+
 const child = spawn("bun", [
   "x",
   "wrangler",

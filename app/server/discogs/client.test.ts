@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { createDiscogsApi } from "./api"
-import { createDiscogsClient, createMemoryCache } from "./client"
+import { createMemoryCacheStore } from "./cache"
+import { createDiscogsClient } from "./client"
 import {
   DiscogsFetchError,
   DiscogsRateLimitError,
@@ -20,7 +21,7 @@ describe("Discogs client", () => {
 
   it("serves repeated requests from the response cache", async () => {
     const fetchMock = stubFetch(() => Response.json({ id: 1, title: "Cached" }))
-    const client = createDiscogsClient(env, createMemoryCache())
+    const client = freshClient()
 
     await client.request("masters/1")
     await client.request("masters/1")
@@ -36,7 +37,7 @@ describe("Discogs client", () => {
           headers: { "Retry-After": "60" },
         })
     )
-    const client = createDiscogsClient(env, createMemoryCache())
+    const client = freshClient()
 
     const first = (await client
       .request("masters/1")
@@ -53,7 +54,7 @@ describe("Discogs client", () => {
 
   it("throws DiscogsFetchError for other HTTP failures", async () => {
     stubFetch(() => Response.json({ message: "nope" }, { status: 404 }))
-    const client = createDiscogsClient(env, createMemoryCache())
+    const client = freshClient()
 
     const error = (await client
       .request("masters/404")
@@ -82,7 +83,7 @@ describe("Discogs API schemas", () => {
         extraartists: [{ name: "Elvin Jones", role: "Drums", tracks: null }],
       })
     )
-    const api = createDiscogsApi(createDiscogsClient(env, createMemoryCache()))
+    const api = createDiscogsApi(freshClient())
 
     const release = await api.getRelease(7)
 
@@ -94,7 +95,7 @@ describe("Discogs API schemas", () => {
 
   it("rejects payloads that do not match the schema", async () => {
     stubFetch(() => Response.json({ id: "not-a-number", title: 42 }))
-    const api = createDiscogsApi(createDiscogsClient(env, createMemoryCache()))
+    const api = createDiscogsApi(freshClient())
 
     const error = await api.getMaster(9).catch((value) => value)
 
@@ -110,7 +111,7 @@ describe("Discogs API schemas", () => {
         results: [{ id: 1, title: "Artist - Title", year: "1966", thumb: "" }],
       })
     )
-    const api = createDiscogsApi(createDiscogsClient(env, createMemoryCache()))
+    const api = createDiscogsApi(freshClient())
 
     const response = await api.search({ type: "release", per_page: 5, page: 1 })
 
@@ -119,6 +120,13 @@ describe("Discogs API schemas", () => {
     ])
   })
 })
+
+function freshClient() {
+  return createDiscogsClient(env, {
+    cache: createMemoryCacheStore(),
+    pending: new Map(),
+  })
+}
 
 function stubFetch(handler: (url: URL) => Response) {
   const fetchMock = vi.fn(async (input: string | URL | Request) =>

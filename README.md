@@ -98,9 +98,33 @@ GitHub Actions runs `lint`, `typecheck`, `test`, and `build` on pull requests an
 - `CLOUDFLARE_ACCOUNT_ID`
 - `DISCOGS_TOKEN`
 
+### Optional: global Discogs cache (Workers KV)
+
+Discogs responses are cached for 10 minutes and a 429 cooldown is shared
+between Worker isolates. Without extra configuration the Worker uses the
+Cache API (`caches.default`), which is shared by all isolates in one Cloudflare
+data center and needs no binding. For a cache shared across all data centers,
+create a KV namespace and bind it as `DISCOGS_CACHE`:
+
+```sh
+bun x wrangler kv namespace create DISCOGS_CACHE
+```
+
+Then add the returned id to `wrangler.jsonc`:
+
+```jsonc
+"kv_namespaces": [
+  { "binding": "DISCOGS_CACHE", "id": "<namespace id>" }
+]
+```
+
+When the binding exists it is used instead of the Cache API. KV writes take up
+to about a minute to propagate between data centers, so the cooldown is
+eventually consistent across regions.
+
 ## Discogs API Notes
 
-Discogs search is rate-limited. The Discogs layer in `app/server/discogs/` reads Worker env bindings, adds authentication, caches responses for 10 minutes, coalesces duplicate in-flight requests, applies a short cooldown after HTTP 429 responses (surfaced as `DiscogsRateLimitError`), and validates every payload against a TypeBox schema before the API uses it.
+Discogs search is rate-limited. The Discogs layer in `app/server/discogs/` reads Worker env bindings, adds authentication, caches responses for 10 minutes in isolate memory plus a shared store (Workers KV when bound, otherwise the Cache API), coalesces duplicate in-flight requests, applies a short cooldown after HTTP 429 responses (surfaced as `DiscogsRateLimitError`), and validates every payload against a TypeBox schema before the API uses it.
 
 The app uses Discogs database search filters such as `credit`, `track`, `genre`, and `type=release`. Role filters like `drums` or `bass` are local detail-page filters over loaded `extraartists.role` values because Discogs public search does not expose a stable instrument-role filter.
 

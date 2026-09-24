@@ -242,6 +242,16 @@ The Discogs layer lives in `app/server/discogs/`:
   key/secret fallback), builds query strings, caches responses for 10 minutes,
   coalesces duplicate in-flight requests, applies a cooldown after HTTP 429
   responses, and reads at most 2 KB of Discogs error bodies.
+- `cache.ts` holds the cache backends behind one `DiscogsCacheStore`
+  interface (response get/put plus the shared `rateLimitedUntil`).
+  `createDiscogsCache(env)` layers the per-isolate memory store over a shared
+  store: Workers KV when a `DISCOGS_CACHE` binding exists, otherwise the Cache
+  API (`caches.default`, shared per data center, no binding needed), otherwise
+  memory only (Vitest, plain Vite dev). KV keys are SHA-256 hashes of the
+  Discogs URL; KV TTLs are clamped to KV's 60 second minimum while the stored
+  expiry keeps the real 10 minute / cooldown deadlines. A failing shared store
+  is logged and treated as a miss. Cached responses are served even during a
+  429 cooldown; only uncached requests fail fast with `DiscogsRateLimitError`.
 - `api.ts` exposes typed endpoint functions (`search`, `getMaster`,
   `getRelease`). Each validates the JSON payload against a TypeBox schema from
   `schemas.ts`; `app/types.ts` re-exports the types derived from those schemas.

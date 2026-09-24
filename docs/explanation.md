@@ -81,6 +81,7 @@ release-level credit に `tracks` 範囲がある場合は、その範囲が sel
 Discogs API 呼び出しは `app/server/discogs/` に集約しています。
 
 - `client.ts`: `DISCOGS_TOKEN` (または `DISCOGS_API_KEY` / `DISCOGS_API_SECRET`) による auth、query parameter の組み立て、10 分の response cache、同じ URL への同時 request の coalescing、HTTP 429 のあとの cooldown、error body の読み取り上限
+- `cache.ts`: cache の保存先。isolate 内の memory の上に共有ストアを重ねる。`DISCOGS_CACHE` KV binding があれば Workers KV (全リージョン共有)、なければ Cache API (`caches.default`、データセンター単位で共有、binding 不要)、どちらもない環境 (Vitest など) は memory のみ。429 の cooldown (`rateLimitedUntil`) も同じストアで isolate をまたいで共有する
 - `api.ts`: `search` / `getMaster` / `getRelease` の型付き関数。Discogs の JSON は `schemas.ts` の TypeBox schema で検証してから返す (`app/types.ts` の型も schema から導出)
 - `errors.ts`: `DiscogsFetchError` / `DiscogsRateLimitError` (429 と cooldown 中) / `DiscogsResponseError` (schema 不一致、502 扱い)
 - `index.ts`: typed API を `ctx.discogs` として渡す Elysia plugin

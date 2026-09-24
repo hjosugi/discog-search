@@ -1,7 +1,11 @@
 import { Elysia, t } from "elysia"
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker"
 
-import { discogsPlugin, type DiscogsEnv } from "./discogs"
+import {
+  discogsPlugin,
+  type DiscogsCacheEnv,
+  type DiscogsEnv,
+} from "./discogs"
 import {
   ApiHttpError,
   getMasterVersionsApiData,
@@ -10,7 +14,7 @@ import {
   getSuggestionsApiData,
 } from "./data"
 
-export type ServerEnv = DiscogsEnv & {
+export type ServerEnv = DiscogsEnv & DiscogsCacheEnv & {
   ASSETS?: {
     fetch(request: Request): Promise<Response> | Response
   }
