@@ -151,7 +151,22 @@ leader releases.
 
 ## Detail Flow
 
-Album detail pages live in `app/routes/search.$Id.tsx`.
+Album detail pages live in `app/routes/search.$Id.tsx`. The route module only
+loads data and composes the page; the pieces live elsewhere:
+
+- `app/components/album/`: `AlbumHeader`, `CreditList`, `RoleFilterLinks`,
+  `TrackList`, `VideoList`, `SectionTitle`, `Panel`, `DetailBreadcrumb`, and
+  `AlbumErrorState`.
+- `app/utils/trackCredits.ts`: credit domain logic (`getTrackCredits`,
+  `creditAppliesToTrack`, `dedupeCredits`, `isPerformanceRole`, role filters).
+- `app/utils/albumDetail.ts`: detail-page links (`buildDetailHref` keeps the
+  search context and `kind=release`), cover/artist helpers, video matching,
+  selected-track resolution, and page meta.
+- `app/utils/streaming.ts`: Apple Music / Spotify / YouTube Music links.
+- `app/utils/text.ts`: the only text normalization helpers. `normalizeText`
+  (drops "(Take 3)"/"[Live]" notes) is used for matching titles, names, and
+  roles; `normalizeForRanking` keeps those notes for search scoring; both fold
+  case, accents, and full-width characters and keep non-Latin scripts.
 
 Search results can link to either a release or a master. Release results carry
 `kind=release` in the URL. The detail loader then:

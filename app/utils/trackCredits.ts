@@ -1,4 +1,5 @@
 import type { ExtraArtist, TrackItem } from "../types"
+import { cleanSearchText, normalizePosition, normalizeText } from "./text"
 
 export type Credit = ExtraArtist & {
   source: "track" | "release"
@@ -40,13 +41,13 @@ export const PERFORMANCE_ROLE_PATTERNS = [
 ]
 
 export function findBestTrackMatch(tracks: TrackItem[], query: string) {
-  const normalizedQuery = normalizeTrackText(query)
+  const normalizedQuery = normalizeText(query)
   if (!normalizedQuery) return null
 
   return (
-    tracks.find((track) => normalizeTrackText(track.title) === normalizedQuery) ||
-    tracks.find((track) => normalizeTrackText(track.title).includes(normalizedQuery)) ||
-    tracks.find((track) => normalizedQuery.includes(normalizeTrackText(track.title))) ||
+    tracks.find((track) => normalizeText(track.title) === normalizedQuery) ||
+    tracks.find((track) => normalizeText(track.title).includes(normalizedQuery)) ||
+    tracks.find((track) => normalizedQuery.includes(normalizeText(track.title))) ||
     null
   )
 }
@@ -86,10 +87,10 @@ export function filterCreditsByRole(credits: Credit[], roleFilter: string) {
 }
 
 export function roleMatchesFilter(role: string, roleFilter: string) {
-  const normalizedFilter = normalizeCreditText(roleFilter)
+  const normalizedFilter = normalizeText(roleFilter)
   if (!normalizedFilter) return true
 
-  const normalizedRole = normalizeCreditText(role)
+  const normalizedRole = normalizeText(role)
   return (
     normalizedRole.includes(normalizedFilter) ||
     normalizedFilter.includes(normalizedRole)
@@ -100,8 +101,8 @@ export function dedupeCredits(credits: Credit[]) {
   const seen = new Set<string>()
   return credits.filter((credit) => {
     const key = [
-      normalizeCreditText(credit.name),
-      normalizeCreditText(credit.role),
+      normalizeText(credit.name),
+      normalizeText(credit.role),
       credit.source,
     ].join("-")
     if (seen.has(key)) return false
@@ -117,7 +118,7 @@ export function getRoleFilterOptions(credits: Credit[]) {
     splitCreditRoles(credit.role)
       .filter(isPerformanceRole)
       .forEach((role) => {
-        const key = normalizeCreditText(role)
+        const key = normalizeText(role)
         if (key && !rolesByKey.has(key)) {
           rolesByKey.set(key, role)
         }
@@ -162,35 +163,6 @@ export function creditAppliesToTrack(
 function splitCreditRoles(role: string) {
   return role
     .split(/\s*(?:,|;|\/|&|\band\b)\s*/i)
-    .map(cleanRoleLabel)
+    .map(cleanSearchText)
     .filter(Boolean)
-}
-
-function cleanRoleLabel(value: string) {
-  return value
-    .replace(/\([^)]*\)/g, "")
-    .replace(/\[[^\]]*\]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-function normalizeCreditText(value = "") {
-  return value
-    .toLowerCase()
-    .replace(/\([^)]*\)/g, "")
-    .replace(/\[[^\]]*\]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-}
-
-function normalizeTrackText(value = "") {
-  return value
-    .toLowerCase()
-    .replace(/\([^)]*\)/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-}
-
-function normalizePosition(value: string) {
-  return value.toUpperCase().replace(/\s+/g, "")
 }

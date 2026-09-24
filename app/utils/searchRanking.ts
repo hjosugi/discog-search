@@ -1,4 +1,5 @@
-import { SearchResult } from "../types"
+import type { SearchResult } from "../types"
+import { normalizeForRanking } from "./text"
 
 export type SearchSortOption = "relevance" | "year_desc" | "year_asc"
 
@@ -48,7 +49,7 @@ function dedupeResults(results: SearchResult[]) {
 
   return results.filter((result) => {
     const key = [
-      normalizeForSearch(result.title),
+      normalizeForRanking(result.title),
       result.year || "",
       result.country || "",
     ].join("|")
@@ -67,12 +68,12 @@ function scoreResult(
     genre: string
   }
 ) {
-  const normalizedTitle = normalizeForSearch(result.title)
-  const normalizedQuery = normalizeForSearch(filters.song)
+  const normalizedTitle = normalizeForRanking(result.title)
+  const normalizedQuery = normalizeForRanking(filters.song)
   const queryTokens = tokenize(filters.song)
   const creditTokens = tokenize(filters.credit)
   const genreTokens = tokenize(filters.genre)
-  const metadata = normalizeForSearch(
+  const metadata = normalizeForRanking(
     [
       result.artist,
       result.country,
@@ -120,7 +121,7 @@ function scoreResult(
   }
 
   if (genreTokens.length > 0) {
-    const genreText = normalizeForSearch(
+    const genreText = normalizeForRanking(
       [result.genre?.join(" "), result.style?.join(" ")].filter(Boolean).join(" ")
     )
     const matchedGenreTokens = genreTokens.filter((token) =>
@@ -140,21 +141,13 @@ function scoreResult(
 }
 
 function tokenize(value: string) {
-  return normalizeForSearch(value)
+  return normalizeForRanking(value)
     .split(" ")
     .filter((token) => token.length > 1)
 }
 
-function normalizeForSearch(value = "") {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
 function getPrimaryArtist(title: string) {
-  return normalizeForSearch(title.split(/\s+[-–—]\s+/)[0] || "")
+  return normalizeForRanking(title.split(/\s+[-–—]\s+/)[0] || "")
 }
 
 function getYearValue(year?: string) {
