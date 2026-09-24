@@ -331,6 +331,21 @@ Components use semantic color tokens instead of raw palette values:
 
 New UI should reuse these tokens (or add a new semantic token in
 `app/theme.ts`) rather than hard-coding `white` / `gray.*` / `blue.*` values.
+Every token has a `_dark` value, which is what makes dark mode work.
+
+### Dark mode
+
+The header's color theme menu offers Light, Dark, and System. The preference
+is stored in `localStorage` (`discog-search:color-mode`) by `app/colorMode.ts`;
+"System" removes the key and follows `prefers-color-scheme`, including changes
+while the page is open. Chakra's default storage manager would persist the
+first system-derived mode as if the user had chosen it, so the app passes a
+custom `colorModeManager` that only reports the resolved mode and ignores
+Chakra's writes. An inline script in `<head>` (`colorModeScript`) sets
+`<html data-theme>` and `color-scheme` from the same preference before first
+paint, so there is no light flash for dark-mode users. The root `ErrorBoundary`
+renders inside the same app shell, so 404 and unexpected-error pages are
+themed too.
 
 ## React Router v7
 

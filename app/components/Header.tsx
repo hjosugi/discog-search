@@ -11,6 +11,7 @@ import {
 import { Link as RouterLink, NavLink } from "react-router"
 
 import { AppIcon } from "./AppIcon"
+import { ColorModeMenu } from "./ColorModeMenu"
 import { useFavorites } from "../hooks/useFavorites"
 import { useI18n } from "../i18n/I18nProvider"
 import { isLocale } from "../i18n/locale"
@@ -96,6 +97,7 @@ export function Header() {
                 </option>
               ))}
             </Select>
+            <ColorModeMenu />
           </HStack>
         </HStack>
       </Container>

@@ -142,6 +142,15 @@ export const en = {
   "album.versions.loadMore": "Load more versions",
   "album.versions.error": "Could not load other versions.",
 
+  "theme.label": "Color theme",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
+  "theme.system": "System",
+  "error.page.title": "Something went wrong",
+  "error.page.notFound": "Page not found",
+  "error.page.notFoundBody": "The page you opened does not exist.",
+  "error.page.back": "Back to Search",
+
   "error.discogs_auth":
     "Discogs rejected the request. Check DISCOGS_TOKEN, or DISCOGS_API_KEY and DISCOGS_API_SECRET, then restart the dev server.",
   "error.discogs_rate_limited":
@@ -296,6 +305,15 @@ export const ja: Messages = {
   "album.versions.unknownYear": "年不明",
   "album.versions.loadMore": "バージョンをさらに読み込む",
   "album.versions.error": "他のバージョンを読み込めませんでした。",
+
+  "theme.label": "カラーテーマ",
+  "theme.light": "ライト",
+  "theme.dark": "ダーク",
+  "theme.system": "システム設定",
+  "error.page.title": "問題が発生しました",
+  "error.page.notFound": "ページが見つかりません",
+  "error.page.notFoundBody": "開いたページは存在しません。",
+  "error.page.back": "検索に戻る",
 
   "error.discogs_auth":
     "Discogs にリクエストを拒否されました。DISCOGS_TOKEN (または DISCOGS_API_KEY と DISCOGS_API_SECRET) を確認して開発サーバーを再起動してください。",

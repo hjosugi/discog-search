@@ -6,11 +6,14 @@ type IconName =
   | "disc"
   | "external"
   | "mic"
+  | "monitor"
+  | "moon"
   | "music"
   | "play"
   | "search"
   | "spark"
   | "star"
+  | "sun"
   | "tag"
   | "user"
   | "x"
@@ -80,6 +83,14 @@ const icons: Record<IconName, JSX.Element> = {
       <path d="M8 21h8" />
     </>
   ),
+  monitor: (
+    <>
+      <rect x="3" y="4" width="18" height="12" rx="2" />
+      <path d="M8 20h8" />
+      <path d="M12 16v4" />
+    </>
+  ),
+  moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />,
   music: (
     <>
       <path d="M9 18V5l12-2v13" />
@@ -108,6 +119,19 @@ const icons: Record<IconName, JSX.Element> = {
   ),
   star: (
     <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+  ),
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2" />
+      <path d="M12 20v2" />
+      <path d="m4.9 4.9 1.4 1.4" />
+      <path d="m17.7 17.7 1.4 1.4" />
+      <path d="M2 12h2" />
+      <path d="M20 12h2" />
+      <path d="m4.9 19.1 1.4-1.4" />
+      <path d="m17.7 6.3 1.4-1.4" />
+    </>
   ),
   tag: (
     <>
