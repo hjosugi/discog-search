@@ -7,6 +7,7 @@ type IconName =
   | "external"
   | "mic"
   | "music"
+  | "play"
   | "search"
   | "spark"
   | "star"
@@ -86,6 +87,7 @@ const icons: Record<IconName, JSX.Element> = {
       <circle cx="18" cy="16" r="3" />
     </>
   ),
+  play: <path d="M8 5.5v13a1 1 0 0 0 1.5.9l10.4-6.5a1 1 0 0 0 0-1.8L9.5 4.6A1 1 0 0 0 8 5.5Z" />,
   search: (
     <>
       <circle cx="11" cy="11" r="7" />

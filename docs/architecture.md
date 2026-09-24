@@ -198,6 +198,14 @@ without changing the upstream Discogs search request. Chips are built from the
 actual roles present on the selected track, such as `Trumpet` or `Vibraphone`,
 rather than from a fixed instrument list.
 
+The Videos section shows up to three Discogs videos, preferring the ones whose
+title mentions the selected track. YouTube URLs (`watch?v=`, `youtu.be/`,
+`/embed/`, `/shorts/`, ...) are parsed by `app/utils/video.ts` and rendered as
+a lite embed: a lazily loaded `i.ytimg.com` thumbnail in a reserved 16:9 box
+with a play button. The `youtube-nocookie.com` iframe is only created after the
+user presses play, so the initial page load requests no player code and the
+swap causes no layout shift. Other video URLs stay external links.
+
 Credit names on the detail page link back to `/search?credit=<name>`. This lets
 users pivot from a track credit to that person's other credited releases while
 normal browser back navigation restores the previous detail page, including the

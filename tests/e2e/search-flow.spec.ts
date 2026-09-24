@@ -62,7 +62,7 @@ test("searches mocked Discogs results and opens album details", async ({ page })
   await page.getByRole("link", { name: "Trumpet" }).click()
 
   await expect(page).toHaveURL(/role=Trumpet/)
-  await expect(page.getByRole("link", { name: "Miles Davis" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Miles Davis", exact: true })).toBeVisible()
   await expect(page.getByRole("link", { name: "Tony Williams" })).toHaveCount(0)
 })
 

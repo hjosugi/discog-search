@@ -35,7 +35,20 @@ const release = {
     { name: "Miles Davis", role: "Trumpet", tracks: "A1" },
     { name: "Teo Macero", role: "Producer" },
   ],
-  videos: [],
+  videos: [
+    {
+      uri: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      title: "Miles Davis - Nefertiti (Official Audio)",
+      duration: 472,
+      embed: true,
+    },
+    {
+      uri: "https://vimeo.com/123456",
+      title: "Nefertiti live footage",
+      duration: 95,
+      embed: true,
+    },
+  ],
 }
 
 const server = http.createServer(async (request, response) => {
