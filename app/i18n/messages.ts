@@ -6,7 +6,6 @@
 export const en = {
   "app.name": "Sideman Album Finder",
   "app.tagline": "Discogs credits search",
-  "app.home": "Sideman Album Finder home",
   "app.skipToContent": "Skip to content",
 
   "nav.main": "Main",
@@ -178,7 +177,6 @@ export type Messages = Record<MessageKey, string>
 export const ja: Messages = {
   "app.name": "Sideman Album Finder",
   "app.tagline": "Discogs クレジット検索",
-  "app.home": "Sideman Album Finder ホーム",
   "app.skipToContent": "本文へスキップ",
 
   "nav.main": "メイン",

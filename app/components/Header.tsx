@@ -38,7 +38,6 @@ export function Header() {
             as={RouterLink}
             to="/search"
             _hover={{ textDecoration: "none" }}
-            aria-label={t("app.home")}
           >
             <HStack spacing={3}>
               <Box
