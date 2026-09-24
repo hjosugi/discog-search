@@ -84,10 +84,12 @@ export function PersonCreditsPanel({
                 <Link
                   as={RouterLink}
                   to={buildDetailHref(location, { track: track.position })}
+                  preventScrollReset
                   aria-current={isSelected ? "true" : undefined}
+                  minH="44px"
                   display="flex"
                   gap={3}
-                  alignItems="baseline"
+                  alignItems="center"
                   px={2}
                   py={1.5}
                   borderRadius="md"
@@ -115,6 +117,7 @@ export function PersonCreditsPanel({
         <Button
           mt={2}
           size="xs"
+          minH={{ base: "44px", md: 6 }}
           variant="ghost"
           onClick={() => setIsExpanded((value) => !value)}
           aria-expanded={isExpanded}

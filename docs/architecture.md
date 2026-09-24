@@ -311,6 +311,26 @@ calls during typing and navigation.
   favorites pages in light and dark mode, and drives the full
   search -> suggestion -> detail flow with the keyboard only.
 
+## Mobile layout
+
+- Below the `lg` breakpoint the album page shows Performers and Tracks as two
+  tabs (`app/components/album/AlbumSections.tsx`) instead of stacking the long
+  credit list above the track list. Choosing a track returns to the Performers
+  tab and keeps it in view; track, role, and person-panel links use
+  `preventScrollReset`, so switching never jumps back to the top of the page.
+  The track list only scrolls inside its own box on wide screens.
+- On small screens the search form shows only credit, song, and Search; genre,
+  role, year, country, format, sort, and decade fold into a "More filters"
+  button (`aria-expanded`, with the number of active filters). From `md` up all
+  fields are always visible.
+- The album header keeps the cover next to the title on phones (88px), and the
+  site header wraps its controls onto a second row instead of overflowing.
+- Interactive controls are at least 44px tall on small screens (inputs,
+  buttons, chips, track rows, header controls).
+- `tests/e2e/mobile.spec.ts` checks a 375x667 viewport: the compact form fits
+  the first view, no horizontal scrolling, 44px targets, and switching tracks
+  then reading their credits within one screen.
+
 ## Internationalization
 
 The UI ships in English and Japanese. Dictionaries live in

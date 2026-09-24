@@ -131,7 +131,7 @@ export function SongCombobox({
     <Box position="relative">
       <HiddenLabel htmlFor={id}>{label}</HiddenLabel>
       <InputGroup size="md">
-        <InputLeftElement color="text.icon" pointerEvents="none">
+        <InputLeftElement color="text.icon" pointerEvents="none" h="100%">
           <AppIcon name="music" size={17} />
         </InputLeftElement>
         <Input
@@ -155,6 +155,7 @@ export function SongCombobox({
           }}
           onKeyDown={handleKeyDown}
           autoComplete="off"
+          h={{ base: "44px", md: 10 }}
           bg="bg.surface"
         />
       </InputGroup>

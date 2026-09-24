@@ -41,24 +41,25 @@ export function AlbumHeader({
   actions?: ReactNode
 }) {
   return (
-    <Stack
-      direction={{ base: "column", md: "row" }}
-      spacing={{ base: 4, md: 6 }}
-      align="start"
-    >
+    <Stack direction="row" spacing={{ base: 3, md: 6 }} align="start">
       {coverImage ? (
         <Image
           src={coverImage}
           alt={title}
-          boxSize={{ base: "150px", md: "190px" }}
+          boxSize={{ base: "88px", sm: "120px", md: "190px" }}
+          flexShrink={0}
           objectFit="cover"
           borderRadius="md"
         />
       ) : (
-        <Box boxSize={{ base: "150px", md: "190px" }} bg="bg.muted" />
+        <Box
+          boxSize={{ base: "88px", sm: "120px", md: "190px" }}
+          flexShrink={0}
+          bg="bg.muted"
+        />
       )}
 
-      <VStack align="stretch" spacing={4} flex="1">
+      <VStack align="stretch" spacing={{ base: 3, md: 4 }} flex="1" minW={0}>
         <Box>
           <HStack align="center" spacing={2} mb={1}>
             <Text color="text.subtle">
@@ -93,6 +94,7 @@ export function AlbumHeader({
                 colorScheme={service.colorScheme}
                 leftIcon={<AppIcon name="music" size={15} />}
                 size="sm"
+                minH={{ base: "44px", md: 8 }}
               >
                 {service.label}
               </Button>
@@ -108,6 +110,7 @@ export function AlbumHeader({
                 variant="outline"
                 leftIcon={<AppIcon name="external" size={15} />}
                 size="sm"
+                minH={{ base: "44px", md: 8 }}
               >
                 Discogs
               </Button>

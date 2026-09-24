@@ -32,6 +32,8 @@ export function RoleFilterLinks({
             <Button
               as={RouterLink}
               to={buildDetailHref(location, { role })}
+              preventScrollReset
+              minH={{ base: "44px", md: 6 }}
               aria-current={isActive ? "true" : undefined}
               leftIcon={isActive ? <AppIcon name="check" size={12} /> : undefined}
               colorScheme={isActive ? "blue" : "gray"}
@@ -48,6 +50,8 @@ export function RoleFilterLinks({
           <Button
             as={RouterLink}
             to={buildDetailHref(location, { role: null })}
+            preventScrollReset
+            minH={{ base: "44px", md: 6 }}
             size="xs"
             variant="ghost"
           >

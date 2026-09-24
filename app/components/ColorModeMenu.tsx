@@ -56,6 +56,8 @@ export function ColorModeMenu() {
         title={t("theme.label")}
         icon={<AppIcon name={colorMode === "dark" ? "moon" : "sun"} size={17} />}
         size="sm"
+        minW={{ base: "44px", md: 8 }}
+        minH={{ base: "44px", md: 8 }}
         variant="ghost"
       />
       <MenuList minW="10rem">

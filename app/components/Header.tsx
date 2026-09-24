@@ -33,7 +33,12 @@ export function Header() {
       borderColor="border.default"
     >
       <Container maxW="1100px" px={{ base: 4, md: 6 }} py={3}>
-        <HStack justify="space-between" spacing={3}>
+        <HStack
+          justify="space-between"
+          spacing={3}
+          flexWrap="wrap"
+          rowGap={2}
+        >
           <Link
             as={RouterLink}
             to="/search"
@@ -57,18 +62,28 @@ export function Header() {
                 <Text color="text.default" fontSize="md" fontWeight="bold">
                   {t("app.name")}
                 </Text>
-                <Text color="text.muted" fontSize="xs">
+                <Text
+                  color="text.muted"
+                  fontSize="xs"
+                  display={{ base: "none", sm: "block" }}
+                >
                   {t("app.tagline")}
                 </Text>
               </Box>
             </HStack>
           </Link>
 
-          <HStack as="nav" aria-label={t("nav.main")} spacing={1}>
+          <HStack
+            as="nav"
+            aria-label={t("nav.main")}
+            spacing={1}
+            ml="auto"
+          >
             <Button
               as={NavLink}
               to="/favorites"
               size="sm"
+              minH={{ base: "44px", md: 8 }}
               variant="ghost"
               leftIcon={<AppIcon name="star" size={15} />}
               _activeLink={{ bg: "bg.selected", color: "text.link" }}
@@ -87,6 +102,7 @@ export function Header() {
                 if (isLocale(event.target.value)) setLocale(event.target.value)
               }}
               size="sm"
+              h={{ base: "44px", md: 8 }}
               variant="filled"
               w="auto"
             >

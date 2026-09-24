@@ -15,7 +15,12 @@ export function TrackList({
   selectedPosition?: string
 }) {
   return (
-    <VStack align="stretch" spacing={1} maxH="58vh" overflowY="auto">
+    <VStack
+      align="stretch"
+      spacing={1}
+      maxH={{ base: "none", lg: "58vh" }}
+      overflowY={{ base: "visible", lg: "auto" }}
+    >
       {tracks.map((track) => {
         const isSelected = track.position === selectedPosition
 
@@ -24,8 +29,10 @@ export function TrackList({
             key={`${track.position}-${track.title}`}
             as={RouterLink}
             to={buildDetailHref(location, { track: track.position })}
+            preventScrollReset
             aria-current={isSelected ? "true" : undefined}
             p={2}
+            minH="44px"
             borderRadius="md"
             bg={isSelected ? "bg.selected" : "transparent"}
             borderWidth="1px"

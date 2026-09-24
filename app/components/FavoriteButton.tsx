@@ -35,6 +35,8 @@ export function FavoriteButton({
       _hover={{ color: isSaved ? "yellow.600" : "text.accent", bg: "bg.subtle" }}
       onClick={() => toggleFavorite(album)}
       size={size}
+      minW={{ base: "44px", md: size === "sm" ? 8 : 10 }}
+      minH={{ base: "44px", md: size === "sm" ? 8 : 10 }}
       variant="ghost"
       {...props}
     />

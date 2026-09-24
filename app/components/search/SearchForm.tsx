@@ -90,6 +90,7 @@ export function SearchForm({
   const creditInputRef = useRef<HTMLInputElement>(null)
   const submittedKey = buildSearchParams(submittedState).toString()
   const [values, setValues] = useState(() => toFormValues(submittedState))
+  const [showMoreFilters, setShowMoreFilters] = useState(false)
   const submittedStateRef = useRef(submittedState)
   submittedStateRef.current = submittedState
 
@@ -121,6 +122,21 @@ export function SearchForm({
     (!values.credit.trim() && !values.song.trim() && !values.genre.trim()) ||
     isSearchPending
   const fieldId = (name: string) => `${idPrefix}-${name}`
+  const activeMoreFilters = [
+    values.genre,
+    values.role,
+    values.year,
+    values.decade,
+    values.country,
+    values.format,
+    values.sort !== "relevance" ? values.sort : "",
+  ].filter((value) => value.trim()).length
+  // On small screens only credit + song are shown until "More filters" is
+  // opened; from md up every field is always visible.
+  const moreFiltersDisplay = {
+    base: showMoreFilters ? "block" : "none",
+    md: "block",
+  }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -167,7 +183,7 @@ export function SearchForm({
             {t("search.field.credit")}
           </HiddenLabel>
           <InputGroup size="md">
-            <InputLeftElement color="text.icon" pointerEvents="none">
+            <InputLeftElement color="text.icon" pointerEvents="none" h="100%">
               <AppIcon name="user" size={17} />
             </InputLeftElement>
             <Input
@@ -178,6 +194,7 @@ export function SearchForm({
               value={values.credit}
               onChange={(event) => setValue("credit", event.target.value)}
               aria-keyshortcuts="/"
+              h={{ base: "44px", md: 10 }}
               bg="bg.surface"
             />
           </InputGroup>
@@ -196,12 +213,16 @@ export function SearchForm({
           />
         </Box>
 
-        <Box gridColumn={{ base: "auto", md: "2 / 3", lg: "auto" }}>
+        <Box
+          id={fieldId("genre-field")}
+          display={moreFiltersDisplay}
+          gridColumn={{ base: "auto", md: "2 / 3", lg: "auto" }}
+        >
           <HiddenLabel htmlFor={fieldId("genre")}>
             {t("search.field.genre")}
           </HiddenLabel>
           <InputGroup size="md">
-            <InputLeftElement color="text.icon" pointerEvents="none">
+            <InputLeftElement color="text.icon" pointerEvents="none" h="100%">
               <AppIcon name="tag" size={16} />
             </InputLeftElement>
             <Input
@@ -211,17 +232,22 @@ export function SearchForm({
               value={values.genre}
               onChange={(event) => setValue("genre", event.target.value)}
               list={fieldId("genre-suggestions")}
+              h={{ base: "44px", md: 10 }}
               bg="bg.surface"
             />
           </InputGroup>
         </Box>
 
-        <Box gridColumn={{ base: "auto", md: "1 / 3", lg: "1 / 4" }}>
+        <Box
+          id={fieldId("role-field")}
+          display={moreFiltersDisplay}
+          gridColumn={{ base: "auto", md: "1 / 3", lg: "1 / 4" }}
+        >
           <HiddenLabel htmlFor={fieldId("role")}>
             {t("search.field.role")}
           </HiddenLabel>
           <InputGroup size="md">
-            <InputLeftElement color="text.icon" pointerEvents="none">
+            <InputLeftElement color="text.icon" pointerEvents="none" h="100%">
               <AppIcon name="mic" size={16} />
             </InputLeftElement>
             <Input
@@ -231,6 +257,7 @@ export function SearchForm({
               value={values.role}
               onChange={(event) => setValue("role", event.target.value)}
               list={fieldId("role-suggestions")}
+              h={{ base: "44px", md: 10 }}
               bg="bg.surface"
             />
           </InputGroup>
@@ -244,7 +271,7 @@ export function SearchForm({
           loadingText={t("search.submitting")}
           leftIcon={<AppIcon name="search" size={16} />}
           gridColumn={{ base: "auto", md: "3 / 4", lg: "auto" }}
-          h="40px"
+          h={{ base: "44px", md: 10 }}
           px={4}
           w="100%"
           whiteSpace="nowrap"
@@ -253,113 +280,148 @@ export function SearchForm({
         </Button>
       </Grid>
 
-      <SimpleGrid columns={{ base: 1, md: 4 }} gap={2} mt={3}>
-        <Box>
-          <HiddenLabel htmlFor={fieldId("year")}>{t("search.field.year")}</HiddenLabel>
-          <Input
-            id={fieldId("year")}
-            inputMode="numeric"
-            maxLength={4}
-            placeholder={t("search.field.year")}
-            value={values.year}
-            onChange={(event) => {
-              const year = event.target.value
-              setValues((current) => ({
-                ...current,
-                year,
-                decade: year.trim() ? "" : current.decade,
-              }))
+      <Button
+        type="button"
+        display={{ base: "flex", md: "none" }}
+        w="100%"
+        mt={2}
+        minH="44px"
+        variant="ghost"
+        size="sm"
+        aria-expanded={showMoreFilters}
+        aria-controls={`${fieldId("genre-field")} ${fieldId("role-field")} ${fieldId("more-filters")}`}
+        rightIcon={
+          <AppIcon
+            name="chevronDown"
+            size={15}
+            style={{
+              transform: showMoreFilters ? "rotate(180deg)" : undefined,
+              transition: "transform 120ms ease",
             }}
-            bg="bg.surface"
           />
-        </Box>
-        <Box>
-          <HiddenLabel htmlFor={fieldId("country")}>
-            {t("search.field.country")}
-          </HiddenLabel>
-          <Input
-            id={fieldId("country")}
-            placeholder={t("search.field.country")}
-            value={values.country}
-            onChange={(event) => setValue("country", event.target.value)}
-            list={fieldId("country-suggestions")}
-            bg="bg.surface"
-          />
-        </Box>
-        <Box>
-          <HiddenLabel htmlFor={fieldId("format")}>
-            {t("search.field.format")}
-          </HiddenLabel>
-          <Select
-            id={fieldId("format")}
-            value={values.format}
-            onChange={(event) => setValue("format", event.target.value)}
-            bg="bg.surface"
-          >
-            <option value="">{t("search.field.anyFormat")}</option>
-            {FORMAT_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </Select>
-        </Box>
-        <Box>
-          <HiddenLabel htmlFor={fieldId("sort")}>{t("search.field.sort")}</HiddenLabel>
-          <Select
-            id={fieldId("sort")}
-            value={values.sort}
-            onChange={(event) => setValue("sort", getSortOption(event.target.value))}
-            bg="bg.surface"
-          >
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {t(option.label)}
-              </option>
-            ))}
-          </Select>
-        </Box>
-      </SimpleGrid>
-
-      <Wrap
-        mt={3}
-        spacing={2}
-        role="group"
-        aria-label={t("search.field.decade")}
+        }
+        onClick={() => setShowMoreFilters((value) => !value)}
       >
-        <WrapItem>
-          <Button
-            type="button"
-            size="sm"
-            variant={!values.decade ? "solid" : "outline"}
-            colorScheme={!values.decade ? "blue" : "gray"}
-            aria-pressed={!values.decade}
-            onClick={() => setValue("decade", "")}
-          >
-            {t("search.decade.any")}
-          </Button>
-        </WrapItem>
-        {DECADE_OPTIONS.map((option) => (
-          <WrapItem key={option}>
+        {activeMoreFilters > 0
+          ? t("search.moreFiltersActive", { count: activeMoreFilters })
+          : t("search.moreFilters")}
+      </Button>
+
+      <Box id={fieldId("more-filters")} display={moreFiltersDisplay}>
+        <SimpleGrid columns={{ base: 1, md: 4 }} gap={2} mt={3}>
+          <Box>
+            <HiddenLabel htmlFor={fieldId("year")}>{t("search.field.year")}</HiddenLabel>
+            <Input
+              id={fieldId("year")}
+              inputMode="numeric"
+              maxLength={4}
+              placeholder={t("search.field.year")}
+              value={values.year}
+              onChange={(event) => {
+                const year = event.target.value
+                setValues((current) => ({
+                  ...current,
+                  year,
+                  decade: year.trim() ? "" : current.decade,
+                }))
+              }}
+              h={{ base: "44px", md: 10 }}
+              bg="bg.surface"
+            />
+          </Box>
+          <Box>
+            <HiddenLabel htmlFor={fieldId("country")}>
+              {t("search.field.country")}
+            </HiddenLabel>
+            <Input
+              id={fieldId("country")}
+              placeholder={t("search.field.country")}
+              value={values.country}
+              onChange={(event) => setValue("country", event.target.value)}
+              list={fieldId("country-suggestions")}
+              h={{ base: "44px", md: 10 }}
+              bg="bg.surface"
+            />
+          </Box>
+          <Box>
+            <HiddenLabel htmlFor={fieldId("format")}>
+              {t("search.field.format")}
+            </HiddenLabel>
+            <Select
+              id={fieldId("format")}
+              value={values.format}
+              onChange={(event) => setValue("format", event.target.value)}
+              h={{ base: "44px", md: 10 }}
+              bg="bg.surface"
+            >
+              <option value="">{t("search.field.anyFormat")}</option>
+              {FORMAT_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
+          </Box>
+          <Box>
+            <HiddenLabel htmlFor={fieldId("sort")}>{t("search.field.sort")}</HiddenLabel>
+            <Select
+              id={fieldId("sort")}
+              value={values.sort}
+              onChange={(event) => setValue("sort", getSortOption(event.target.value))}
+              h={{ base: "44px", md: 10 }}
+              bg="bg.surface"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {t(option.label)}
+                </option>
+              ))}
+            </Select>
+          </Box>
+        </SimpleGrid>
+
+        <Wrap
+          mt={3}
+          spacing={2}
+          role="group"
+          aria-label={t("search.field.decade")}
+        >
+          <WrapItem>
             <Button
               type="button"
               size="sm"
-              variant={values.decade === option ? "solid" : "outline"}
-              colorScheme={values.decade === option ? "blue" : "gray"}
-              aria-pressed={values.decade === option}
-              onClick={() =>
-                setValues((current) => ({
-                  ...current,
-                  year: "",
-                  decade: current.decade === option ? "" : option,
-                }))
-              }
+              minH={{ base: "44px", md: 8 }}
+              variant={!values.decade ? "solid" : "outline"}
+              colorScheme={!values.decade ? "blue" : "gray"}
+              aria-pressed={!values.decade}
+              onClick={() => setValue("decade", "")}
             >
-              {t("search.decade.label", { decade: option })}
+              {t("search.decade.any")}
             </Button>
           </WrapItem>
-        ))}
-      </Wrap>
+          {DECADE_OPTIONS.map((option) => (
+            <WrapItem key={option}>
+              <Button
+                type="button"
+                size="sm"
+                minH={{ base: "44px", md: 8 }}
+                variant={values.decade === option ? "solid" : "outline"}
+                colorScheme={values.decade === option ? "blue" : "gray"}
+                aria-pressed={values.decade === option}
+                onClick={() =>
+                  setValues((current) => ({
+                    ...current,
+                    year: "",
+                    decade: current.decade === option ? "" : option,
+                  }))
+                }
+              >
+                {t("search.decade.label", { decade: option })}
+              </Button>
+            </WrapItem>
+          ))}
+        </Wrap>
+      </Box>
 
       <datalist id={fieldId("genre-suggestions")}>
         <option value="Jazz" />

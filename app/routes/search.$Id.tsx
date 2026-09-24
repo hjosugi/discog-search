@@ -6,12 +6,13 @@ import {
   useLoaderData,
   useRouteError,
 } from "react-router"
-import { Box, Button, Divider, SimpleGrid } from "@chakra-ui/react"
+import { Box, Button, Divider } from "@chakra-ui/react"
 
 import { AppIcon } from "~/components/AppIcon"
 import { FavoriteButton } from "~/components/FavoriteButton"
 import { AlbumErrorState } from "~/components/album/AlbumErrorState"
 import { AlbumHeader } from "~/components/album/AlbumHeader"
+import { AlbumSections } from "~/components/album/AlbumSections"
 import { CreditList } from "~/components/album/CreditList"
 import { DetailBreadcrumb } from "~/components/album/DetailBreadcrumb"
 import { OtherVersions } from "~/components/album/OtherVersions"
@@ -203,48 +204,53 @@ export default function AlbumView() {
         }
       />
 
-      <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={5} mt={6}>
-        <Panel>
-          <SectionTitle>{t("album.performers")}</SectionTitle>
-          <RoleFilterLinks
-            location={location}
-            activeRole={roleFilter}
-            roles={getRoleFilterOptions(performanceCredits)}
-          />
-          <CreditList
-            credits={visiblePerformanceCredits}
-            highlightPerson={creditSearch}
-            emptyText={
-              roleFilter
-                ? t("album.noRoleCredits", { role: roleFilter })
-                : t("album.noPerformers")
-            }
-          />
+      <AlbumSections
+        trackCount={tracks.filter((track) => track.type_ === "track").length}
+        selectedPosition={selectedTrack?.position}
+        performers={
+          <>
+            <SectionTitle>{t("album.performers")}</SectionTitle>
+            <RoleFilterLinks
+              location={location}
+              activeRole={roleFilter}
+              roles={getRoleFilterOptions(performanceCredits)}
+            />
+            <CreditList
+              credits={visiblePerformanceCredits}
+              highlightPerson={creditSearch}
+              emptyText={
+                roleFilter
+                  ? t("album.noRoleCredits", { role: roleFilter })
+                  : t("album.noPerformers")
+              }
+            />
 
-          {otherCredits.length > 0 && (
-            <Box mt={5}>
-              <SectionTitle>{t("album.credits")}</SectionTitle>
-              <CreditList credits={otherCredits} highlightPerson={creditSearch} />
-            </Box>
-          )}
+            {otherCredits.length > 0 && (
+              <Box mt={5}>
+                <SectionTitle>{t("album.credits")}</SectionTitle>
+                <CreditList credits={otherCredits} highlightPerson={creditSearch} />
+              </Box>
+            )}
 
-          {videos.length > 0 && (
-            <Box mt={5}>
-              <SectionTitle>{t("album.videos")}</SectionTitle>
-              <VideoList videos={videos} />
-            </Box>
-          )}
-        </Panel>
-
-        <Panel>
-          <SectionTitle>{t("album.tracks")}</SectionTitle>
-          <TrackList
-            location={location}
-            tracks={tracks}
-            selectedPosition={selectedTrack?.position}
-          />
-        </Panel>
-      </SimpleGrid>
+            {videos.length > 0 && (
+              <Box mt={5}>
+                <SectionTitle>{t("album.videos")}</SectionTitle>
+                <VideoList videos={videos} />
+              </Box>
+            )}
+          </>
+        }
+        tracks={
+          <>
+            <SectionTitle>{t("album.tracks")}</SectionTitle>
+            <TrackList
+              location={location}
+              tracks={tracks}
+              selectedPosition={selectedTrack?.position}
+            />
+          </>
+        }
+      />
 
       {masterId && (
         <Panel mt={5}>
