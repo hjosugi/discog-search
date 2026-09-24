@@ -8,6 +8,7 @@ import {
 import { Box, Button, Divider, SimpleGrid } from "@chakra-ui/react"
 
 import { AppIcon } from "~/components/AppIcon"
+import { FavoriteButton } from "~/components/FavoriteButton"
 import { AlbumErrorState } from "~/components/album/AlbumErrorState"
 import { AlbumHeader } from "~/components/album/AlbumHeader"
 import { CreditList } from "~/components/album/CreditList"
@@ -24,6 +25,7 @@ import {
   getArtistName,
   getCoverImage,
   getMatchingVideos,
+  getThumbnailImage,
   pickSelectedTrack,
 } from "~/utils/albumDetail"
 import { api, getApiErrorMessage, toQueryObject } from "~/utils/apiClient"
@@ -142,6 +144,20 @@ export default function AlbumView() {
           selectedTrack?.title || release.title
         )}
         selectedTrack={selectedTrack}
+        actions={
+          <FavoriteButton
+            album={{
+              id: detailId,
+              kind: detailKind,
+              title: release.title,
+              artist: artistName || undefined,
+              year: release.year ? String(release.year) : undefined,
+              thumb: getThumbnailImage(release, master) || undefined,
+              credit: new URLSearchParams(backQuery).get("credit") || undefined,
+              song: searchQuery || undefined,
+            }}
+          />
+        }
         performerSummary={
           roleFilter
             ? `${visiblePerformanceCredits.length}/${performanceCredits.length} performers`

@@ -14,8 +14,10 @@ import {
 } from "@chakra-ui/react"
 import { Link } from "react-router"
 
-import { SearchResult } from "../types"
+import type { SearchResult } from "../types"
+import type { FavoriteAlbumInput } from "../utils/favorites"
 import { AppIcon } from "./AppIcon"
+import { FavoriteButton } from "./FavoriteButton"
 
 export function ResultList({
   results,
@@ -61,67 +63,77 @@ export function ResultList({
             borderRadius="md"
             transition="border-color 120ms ease, box-shadow 120ms ease"
             _hover={{ borderColor: "border.hover", boxShadow: "sm" }}
+            display="flex"
+            alignItems="flex-start"
           >
-            <Link to={`/search/${result.id}${queryString ? `?${queryString}` : ""}`}>
-              <HStack align="start" spacing={3} p={3}>
-                {result.thumb ? (
-                  <Image
-                    src={result.thumb}
-                    alt={result.title}
-                    boxSize={{ base: "56px", md: "64px" }}
-                    objectFit="cover"
-                    borderRadius="sm"
-                    flexShrink={0}
-                  />
-                ) : (
-                  <Box
-                    alignItems="center"
-                    boxSize={{ base: "56px", md: "64px" }}
-                    bg="bg.muted"
-                    borderRadius="sm"
-                    color="text.icon"
-                    display="flex"
-                    flexShrink={0}
-                    justifyContent="center"
-                  >
-                    <AppIcon name="disc" size={24} />
-                  </Box>
-                )}
-                <VStack align="stretch" spacing={2} flex="1" minW={0}>
-                  <HStack align="start" justify="space-between" spacing={3}>
-                    <Box minW={0}>
-                      <Text fontSize="md" fontWeight="semibold" noOfLines={2}>
-                        {result.title}
-                      </Text>
-                      {summary && (
-                        <HStack color="text.muted" spacing={1} mt={1}>
-                          <AppIcon name="tag" size={13} />
-                          <Text fontSize="sm" noOfLines={1}>
-                            {summary}
-                          </Text>
-                        </HStack>
-                      )}
+            <Box flex="1" minW={0}>
+              <Link to={`/search/${result.id}${queryString ? `?${queryString}` : ""}`}>
+                <HStack align="start" spacing={3} p={3}>
+                  {result.thumb ? (
+                    <Image
+                      src={result.thumb}
+                      alt={result.title}
+                      boxSize={{ base: "56px", md: "64px" }}
+                      objectFit="cover"
+                      borderRadius="sm"
+                      flexShrink={0}
+                    />
+                  ) : (
+                    <Box
+                      alignItems="center"
+                      boxSize={{ base: "56px", md: "64px" }}
+                      bg="bg.muted"
+                      borderRadius="sm"
+                      color="text.icon"
+                      display="flex"
+                      flexShrink={0}
+                      justifyContent="center"
+                    >
+                      <AppIcon name="disc" size={24} />
                     </Box>
-                    <Text color="text.icon" flexShrink={0} mt={1}>
-                      <AppIcon name="external" size={15} />
-                    </Text>
-                  </HStack>
-                  <Wrap spacing={1}>
-                    {buildTags(result).map((tag) => (
-                      <Badge
-                        key={tag}
-                        bg="bg.muted"
-                        color="text.secondary"
-                        fontWeight="medium"
-                        textTransform="none"
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </Wrap>
-                </VStack>
-              </HStack>
-            </Link>
+                  )}
+                  <VStack align="stretch" spacing={2} flex="1" minW={0}>
+                    <HStack align="start" justify="space-between" spacing={3}>
+                      <Box minW={0}>
+                        <Text fontSize="md" fontWeight="semibold" noOfLines={2}>
+                          {result.title}
+                        </Text>
+                        {summary && (
+                          <HStack color="text.muted" spacing={1} mt={1}>
+                            <AppIcon name="tag" size={13} />
+                            <Text fontSize="sm" noOfLines={1}>
+                              {summary}
+                            </Text>
+                          </HStack>
+                        )}
+                      </Box>
+                      <Text color="text.icon" flexShrink={0} mt={1}>
+                        <AppIcon name="external" size={15} />
+                      </Text>
+                    </HStack>
+                    <Wrap spacing={1}>
+                      {buildTags(result).map((tag) => (
+                        <Badge
+                          key={tag}
+                          bg="bg.muted"
+                          color="text.secondary"
+                          fontWeight="medium"
+                          textTransform="none"
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                    </Wrap>
+                  </VStack>
+                </HStack>
+              </Link>
+            </Box>
+            <FavoriteButton
+              album={toFavoriteInput(result, searchParams)}
+              flexShrink={0}
+              mt={2}
+              mr={2}
+            />
           </Box>
         )
       })}
@@ -302,6 +314,21 @@ function EmptySearchState({
       </HStack>
     </Box>
   )
+}
+
+function toFavoriteInput(
+  result: SearchResult,
+  searchParams: { [key: string]: string }
+): FavoriteAlbumInput {
+  return {
+    id: String(result.id),
+    kind: result.type === "release" ? "release" : "master",
+    title: result.title,
+    year: result.year,
+    thumb: result.thumb || undefined,
+    credit: searchParams.credit || undefined,
+    song: searchParams.song || undefined,
+  }
 }
 
 function buildSearchParams(

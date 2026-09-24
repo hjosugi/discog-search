@@ -9,4 +9,5 @@ export default [
   route("search", "routes/search._index.tsx"),
   route("search/suggestions", "routes/search.suggestions.tsx"),
   route("search/:Id", "routes/search.$Id.tsx"),
+  route("favorites", "routes/favorites.tsx"),
 ] satisfies RouteConfig

@@ -11,6 +11,7 @@ import {
   Wrap,
   WrapItem,
 } from "@chakra-ui/react"
+import type { ReactNode } from "react"
 
 import { AppIcon } from "../AppIcon"
 import type { TrackItem } from "~/types"
@@ -25,6 +26,7 @@ export function AlbumHeader({
   playQuery,
   selectedTrack,
   performerSummary,
+  actions,
 }: {
   title: string
   artistName: string
@@ -34,6 +36,8 @@ export function AlbumHeader({
   playQuery: string
   selectedTrack?: TrackItem
   performerSummary: string
+  /** Controls shown next to the album title, such as the favorite toggle. */
+  actions?: ReactNode
 }) {
   return (
     <Stack
@@ -62,6 +66,7 @@ export function AlbumHeader({
             <Heading as="h1" size={{ base: "md", md: "lg" }}>
               {title}
             </Heading>
+            {actions}
           </HStack>
           <Text color="text.muted" fontSize="sm">
             {artistName}

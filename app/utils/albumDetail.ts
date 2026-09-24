@@ -54,6 +54,14 @@ export function getCoverImage(release: DiscogsRelease, master: DiscogsMaster) {
   return release.images?.[0]?.uri || master.images?.[0]?.uri || null
 }
 
+export function getThumbnailImage(
+  release: DiscogsRelease,
+  master: DiscogsMaster
+) {
+  const image = release.images?.[0] || master.images?.[0]
+  return image?.uri150 || image?.uri || null
+}
+
 export function getArtistName(release: DiscogsRelease, master: DiscogsMaster) {
   return (
     release.artists_sort ||

@@ -128,6 +128,18 @@ so the server render and first client render both start without history UI.
 History entries store the URL-runnable criteria, dedupe identical searches by
 moving them to the front, and keep the latest 10 entries.
 
+Favorites are also client-only. `app/utils/favorites.ts` holds the pure list
+logic (add/remove/toggle, dedupe by `kind:id`, a 200-entry cap, defensive
+parsing, and the link back to the detail page). `app/hooks/useFavorites.ts`
+wraps it in a small external store shared through `useSyncExternalStore`, so
+the result-card stars, the detail-page star, the header count, and the
+`/favorites` page stay in sync, including across browser tabs. Persistence is
+behind the `FavoritesStorage` interface; the shipped implementation uses
+`localStorage` (`discog-search:favorites`), and an account-synced store only
+needs to implement `read`, `write`, and `subscribe`. Each favorite remembers
+the `credit` and `song` it was saved from and reopens the detail page with
+them.
+
 ## Ranking
 
 `app/utils/searchRanking.ts` deduplicates similar releases and scores results by:
