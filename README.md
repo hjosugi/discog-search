@@ -6,12 +6,13 @@ The app runs on Cloudflare Workers through the Cloudflare Vite plugin. Search us
 
 ## Stack
 
-- React 18 and React Router v7 Framework Mode
+- React 19 and React Router v7 Framework Mode
 - Elysia API routes with Eden Treaty client calls
 - Chakra UI with a small amount of Tailwind CSS
 - Cloudflare Workers and `wrangler`
 - Bun 1.3.14+, Node.js 20+
 - Vitest for unit tests and Playwright for a mocked end-to-end search flow
+- ESLint 9 flat config (`eslint.config.js`) with typescript-eslint v8
 
 ## Setup
 
@@ -110,6 +111,7 @@ When deploying or presenting results, keep Discogs attribution visible in the pr
 - [Architecture](docs/architecture.md): search flow, request model, ranking, detail flow, and React Router v7 notes.
 - [Explanation](docs/explanation.md): Japanese project notes covering terminology, search behavior, ranking, detail pages, and caching.
 - [React Router v7 readiness](docs/react-router-v7-readiness.md): migration and compatibility notes.
+- [Dependency policy](docs/dependencies.md): toolchain versions, lint rule parity, React 19 evaluation, and the Dependabot update cadence.
 
 ## License
 
