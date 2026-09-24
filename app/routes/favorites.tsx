@@ -141,7 +141,7 @@ function FavoriteCard({
                   </Text>
                 </HStack>
               )}
-              <Text fontSize="xs" color="text.subtle" mt={1}>
+              <Text fontSize="xs" color="text.muted" mt={1}>
                 {t("favorites.saved", { date: formatDate(entry.savedAt) })}
               </Text>
             </Box>

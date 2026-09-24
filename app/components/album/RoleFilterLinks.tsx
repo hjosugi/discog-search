@@ -1,6 +1,7 @@
 import { Button, Wrap, WrapItem } from "@chakra-ui/react"
 import { Link as RouterLink } from "react-router"
 
+import { AppIcon } from "../AppIcon"
 import { useI18n } from "~/i18n/I18nProvider"
 import { buildDetailHref, type DetailLocation } from "~/utils/albumDetail"
 import { roleMatchesFilter } from "~/utils/trackCredits"
@@ -21,7 +22,7 @@ export function RoleFilterLinks({
   }
 
   return (
-    <Wrap spacing={2} mb={3}>
+    <Wrap spacing={2} mb={3} role="group" aria-label={t("album.roleFilter")}>
       {roles.map((role) => {
         const isActive =
           Boolean(activeRole) && roleMatchesFilter(role, activeRole)
@@ -31,6 +32,8 @@ export function RoleFilterLinks({
             <Button
               as={RouterLink}
               to={buildDetailHref(location, { role })}
+              aria-current={isActive ? "true" : undefined}
+              leftIcon={isActive ? <AppIcon name="check" size={12} /> : undefined}
               colorScheme={isActive ? "blue" : "gray"}
               size="xs"
               variant={isActive ? "solid" : "outline"}

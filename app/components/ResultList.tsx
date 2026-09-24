@@ -11,6 +11,7 @@ import {
   Text,
   VStack,
   Wrap,
+  WrapItem,
 } from "@chakra-ui/react"
 import { Link } from "react-router"
 
@@ -74,7 +75,7 @@ export function ResultList({
                   {result.thumb ? (
                     <Image
                       src={result.thumb}
-                      alt={result.title}
+                      alt=""
                       boxSize={{ base: "56px", md: "64px" }}
                       objectFit="cover"
                       borderRadius="sm"
@@ -97,7 +98,7 @@ export function ResultList({
                   <VStack align="stretch" spacing={2} flex="1" minW={0}>
                     <HStack align="start" justify="space-between" spacing={3}>
                       <Box minW={0}>
-                        <Text fontSize="md" fontWeight="semibold" noOfLines={2}>
+                        <Text as="h3" fontSize="md" fontWeight="semibold" noOfLines={2}>
                           {result.title}
                         </Text>
                         {summary && (
@@ -115,15 +116,16 @@ export function ResultList({
                     </HStack>
                     <Wrap spacing={1}>
                       {buildTags(result).map((tag) => (
-                        <Badge
-                          key={tag}
-                          bg="bg.muted"
-                          color="text.secondary"
-                          fontWeight="medium"
-                          textTransform="none"
-                        >
-                          {tag}
-                        </Badge>
+                        <WrapItem key={tag}>
+                          <Badge
+                            bg="bg.muted"
+                            color="text.secondary"
+                            fontWeight="medium"
+                            textTransform="none"
+                          >
+                            {tag}
+                          </Badge>
+                        </WrapItem>
                       ))}
                     </Wrap>
                   </VStack>
@@ -227,23 +229,24 @@ function InitialSearchGuide() {
           </Text>
           <Wrap mt={3} spacing={2}>
             {examples.map((example) => (
-              <Box
-                key={example.to}
-                as={Link}
-                to={example.to}
-                bg="bg.subtle"
-                borderWidth="1px"
-                borderColor="border.default"
-                borderRadius="md"
-                color="text.secondary"
-                fontSize="sm"
-                fontWeight="medium"
-                px={3}
-                py={2}
-                _hover={{ bg: "bg.selected", borderColor: "border.selected" }}
-              >
-                {example.label}
-              </Box>
+              <WrapItem key={example.to}>
+                <Box
+                  as={Link}
+                  to={example.to}
+                  bg="bg.subtle"
+                  borderWidth="1px"
+                  borderColor="border.default"
+                  borderRadius="md"
+                  color="text.secondary"
+                  fontSize="sm"
+                  fontWeight="medium"
+                  px={3}
+                  py={2}
+                  _hover={{ bg: "bg.selected", borderColor: "border.selected" }}
+                >
+                  {example.label}
+                </Box>
+              </WrapItem>
             ))}
           </Wrap>
         </Box>
@@ -296,23 +299,24 @@ function EmptySearchState({
           {relaxedLinks.length > 0 ? (
             <Wrap mt={4} spacing={2}>
               {relaxedLinks.map((link) => (
-                <Box
-                  key={link.to}
-                  as={Link}
-                  to={link.to}
-                  bg="bg.subtle"
-                  borderWidth="1px"
-                  borderColor="border.default"
-                  borderRadius="md"
-                  color="text.secondary"
-                  fontSize="sm"
-                  fontWeight="medium"
-                  px={3}
-                  py={2}
-                  _hover={{ bg: "bg.selected", borderColor: "border.selected" }}
-                >
-                  {link.label}
-                </Box>
+                <WrapItem key={link.to}>
+                  <Box
+                    as={Link}
+                    to={link.to}
+                    bg="bg.subtle"
+                    borderWidth="1px"
+                    borderColor="border.default"
+                    borderRadius="md"
+                    color="text.secondary"
+                    fontSize="sm"
+                    fontWeight="medium"
+                    px={3}
+                    py={2}
+                    _hover={{ bg: "bg.selected", borderColor: "border.selected" }}
+                  >
+                    {link.label}
+                  </Box>
+                </WrapItem>
               ))}
             </Wrap>
           ) : null}

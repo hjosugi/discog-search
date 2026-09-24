@@ -285,6 +285,32 @@ page is rate limited and reports the rate limit alongside them.
 This keeps API failures from becoming application crashes and reduces repeat
 calls during typing and navigation.
 
+## Accessibility
+
+- Landmarks: every page has a `banner` (header), a `navigation` labelled
+  "Main", `main` (`#main-content`, target of a "Skip to content" link that is
+  the first focusable element), and `contentinfo` (footer). The search form is
+  a `search` landmark and the detail page keeps its "Breadcrumb" navigation.
+- Every search field has a real `<label>` (visually hidden with Chakra's
+  `VisuallyHidden`), not only a placeholder.
+- The song field (`app/components/search/SongCombobox.tsx`) follows the
+  WAI-ARIA 1.2 combobox pattern: `role="combobox"`, `aria-expanded`,
+  `aria-controls`, and `aria-activedescendant` on the input; a `listbox` of
+  `option`s. ArrowDown/ArrowUp move through suggestions, Enter opens the
+  active one (or submits the form when none is active), Escape closes the
+  list.
+- Pressing `/` anywhere outside a text field focuses the credit field
+  (`aria-keyshortcuts="/"`).
+- Selection state is never conveyed by color alone: the selected track and
+  active role chip carry `aria-current` plus an icon, decade chips use
+  `aria-pressed`, and the searched person's rows use `aria-current`.
+- Contrast: the theme darkens Chakra's light-mode `solid` and `link` button
+  shades (500 -> 600) so white-on-blue/red/green and link text meet WCAG AA.
+- `tests/e2e/accessibility.spec.ts` runs axe-core (WCAG 2.1 A/AA rules, the
+  same engine as Lighthouse's accessibility audit) on the search, detail, and
+  favorites pages in light and dark mode, and drives the full
+  search -> suggestion -> detail flow with the keyboard only.
+
 ## Internationalization
 
 The UI ships in English and Japanese. Dictionaries live in

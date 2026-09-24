@@ -2,6 +2,7 @@ import type { JSX, SVGProps } from "react"
 
 type IconName =
   | "arrowLeft"
+  | "check"
   | "clock"
   | "disc"
   | "external"
@@ -54,6 +55,7 @@ const icons: Record<IconName, JSX.Element> = {
       <path d="m12 19-7-7 7-7" />
     </>
   ),
+  check: <path d="M20 6 9 17l-5-5" />,
   clock: (
     <>
       <circle cx="12" cy="12" r="9" />

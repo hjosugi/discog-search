@@ -9,7 +9,14 @@ import {
   useRouteError,
   type LinksFunction,
 } from "react-router"
-import { Box, Button, ChakraProvider, Heading, Text } from "@chakra-ui/react"
+import {
+  Box,
+  Button,
+  ChakraProvider,
+  Heading,
+  Link,
+  Text,
+} from "@chakra-ui/react"
 import type { ReactNode } from "react"
 
 import { AppIcon } from "./components/AppIcon"
@@ -57,9 +64,13 @@ function AppShell({ children }: { children: ReactNode }) {
           display="flex"
           flexDirection="column"
         >
+          <SkipLink />
           <Header />
           <Box
             as="main"
+            id="main-content"
+            tabIndex={-1}
+            _focus={{ outline: "none" }}
             flex="1"
             px={{ base: 4, md: 6 }}
             py={{ base: 5, md: 8 }}
@@ -70,6 +81,30 @@ function AppShell({ children }: { children: ReactNode }) {
         </Box>
       </I18nProvider>
     </ChakraProvider>
+  )
+}
+
+function SkipLink() {
+  const { t } = useI18n()
+
+  return (
+    <Link
+      href="#main-content"
+      position="absolute"
+      left={2}
+      top={2}
+      zIndex="skipLink"
+      px={4}
+      py={2}
+      bg="bg.surface"
+      color="text.link"
+      borderRadius="md"
+      boxShadow="md"
+      transform="translateY(-200%)"
+      _focus={{ transform: "translateY(0)", boxShadow: "outline" }}
+    >
+      {t("app.skipToContent")}
+    </Link>
   )
 }
 

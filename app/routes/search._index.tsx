@@ -1,46 +1,26 @@
+import { useMemo } from "react"
 import {
-  useEffect,
-  useMemo,
-  useState,
-  type FormEvent,
-  type MouseEvent,
-} from "react"
-import {
-  Form,
-  Link as RouterLink,
-  useFetcher,
   useLoaderData,
   useNavigation,
   useSearchParams,
-  useSubmit,
 } from "react-router"
 import {
   Alert,
   AlertDescription,
   AlertIcon,
   Box,
-  Button,
-  Grid,
   Heading,
   HStack,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  Select,
-  SimpleGrid,
   Text,
-  VStack,
-  Wrap,
-  WrapItem,
+  VisuallyHidden,
 } from "@chakra-ui/react"
 
 import { AppIcon } from "../components/AppIcon"
 import { ResultList, ResultListSkeleton } from "../components/ResultList"
+import { SearchForm } from "../components/search/SearchForm"
+import { SearchHistoryPanel } from "../components/search/SearchHistoryPanel"
 import {
-  buildSearchHistoryHref,
-  buildSearchHistorySummary,
   useSearchHistory,
-  type SearchHistoryEntry,
   type SearchHistoryInput,
 } from "../hooks/useSearchHistory"
 import { getActiveLocale, useI18n } from "../i18n/I18nProvider"
@@ -50,8 +30,7 @@ import {
   translateApiError,
   type Translate,
 } from "../i18n/locale"
-import type { MessageKey } from "../i18n/messages"
-import { SearchResult } from "../types"
+import type { SearchResult } from "../types"
 import {
   api,
   getApiErrorCode,
@@ -62,21 +41,14 @@ import {
   buildPageMeta,
   compactText,
 } from "../utils/pageMeta"
-import type { SearchSortOption } from "../utils/searchRanking"
 import {
   buildSearchParams,
-  DECADE_OPTIONS,
   DEFAULT_PAGINATION,
   formatSearchCriteria,
   getResultSearchParams,
   getSearchState,
-  getSortOption,
   type SearchState,
 } from "../utils/searchState"
-
-type SuggestionData = {
-  suggestions: SearchResult[]
-}
 
 type LoaderData = {
   results: SearchResult[]
@@ -89,14 +61,6 @@ type LoaderData = {
   errorMessage?: string
   errorCode?: string
 }
-
-const FORMAT_OPTIONS = ["LP", "CD", "Album", "Single", '12"', '7"', "Cassette"]
-
-const SORT_OPTIONS: Array<{ value: SearchSortOption; label: MessageKey }> = [
-  { value: "relevance", label: "search.sort.relevance" },
-  { value: "year_desc", label: "search.sort.yearDesc" },
-  { value: "year_asc", label: "search.sort.yearAsc" },
-]
 
 type SearchMetaArgs = {
   data?: LoaderData
@@ -156,68 +120,31 @@ export default function SearchPage() {
   const { t, formatNumber: formatCount } = useI18n()
   const [searchParams] = useSearchParams()
   const navigation = useNavigation()
-  const submit = useSubmit()
-  const suggestionsFetcher = useFetcher<SuggestionData>()
   const submittedState = getSearchState(searchParams)
-  const {
-    credit: submittedCredit,
-    song: submittedSong,
-    genre: submittedGenre,
-    role: submittedRole,
-    year: submittedYear,
-    decade: submittedDecade,
-    country: submittedCountry,
-    format: submittedFormat,
-    sort: submittedSort,
-  } = submittedState
-
-  const [credit, setCredit] = useState(() => submittedCredit)
-  const [song, setSong] = useState(() => submittedSong)
-  const [genre, setGenre] = useState(() => submittedGenre)
-  const [role, setRole] = useState(() => submittedRole)
-  const [year, setYear] = useState(() => submittedYear)
-  const [decade, setDecade] = useState(() => submittedDecade)
-  const [country, setCountry] = useState(() => submittedCountry)
-  const [format, setFormat] = useState(() => submittedFormat)
-  const [sort, setSort] = useState<SearchSortOption>(() => submittedSort)
-  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false)
+  const historyKey = buildSearchParams({ ...submittedState, page: 1 }).toString()
   const activeHistorySearch = useMemo<SearchHistoryInput | null>(() => {
-    if (!submittedCredit && !submittedSong && !submittedGenre) return null
+    const state = getSearchState(new URLSearchParams(historyKey))
+    if (!state.credit && !state.song && !state.genre) return null
 
     return {
-      credit: submittedCredit,
-      song: submittedSong,
-      genre: submittedGenre,
-      role: submittedRole,
-      year: submittedYear,
-      decade: submittedDecade,
-      country: submittedCountry,
-      format: submittedFormat,
-      sort: submittedSort,
+      credit: state.credit,
+      song: state.song,
+      genre: state.genre,
+      role: state.role,
+      year: state.year,
+      decade: state.decade,
+      country: state.country,
+      format: state.format,
+      sort: state.sort,
     }
-  }, [
-    submittedCountry,
-    submittedCredit,
-    submittedDecade,
-    submittedFormat,
-    submittedGenre,
-    submittedRole,
-    submittedSong,
-    submittedSort,
-    submittedYear,
-  ])
+  }, [historyKey])
   const searchHistory = useSearchHistory(activeHistorySearch)
 
   const hasSearchCriteria = Boolean(
-    submittedCredit || submittedSong || submittedGenre
+    submittedState.credit || submittedState.song || submittedState.genre
   )
   const isSearchPending =
     navigation.state === "loading" && navigation.location?.pathname === "/search"
-  const isSearchDisabled =
-    (!credit.trim() && !song.trim() && !genre.trim()) || isSearchPending
-  const suggestions = suggestionsFetcher.data?.suggestions || []
-  const showSuggestions =
-    isSuggestionOpen && song.trim().length >= 3 && suggestions.length > 0
   const resultSearchParams = getResultSearchParams(submittedState)
   const headingSummary = getHeadingSummary(
     results.length,
@@ -231,476 +158,64 @@ export default function SearchPage() {
       ? t("error.searchFailed")
       : translateApiError(t, errorCode, errorMessage || "")
 
-  useEffect(() => {
-    setCredit(submittedCredit)
-    setSong(submittedSong)
-    setGenre(submittedGenre)
-    setRole(submittedRole)
-    setYear(submittedYear)
-    setDecade(submittedDecade)
-    setCountry(submittedCountry)
-    setFormat(submittedFormat)
-    setSort(submittedSort)
-  }, [
-    submittedCountry,
-    submittedCredit,
-    submittedDecade,
-    submittedFormat,
-    submittedGenre,
-    submittedRole,
-    submittedSong,
-    submittedSort,
-    submittedYear,
-  ])
-
-  useEffect(() => {
-    const query = song.trim()
-    if (!isSuggestionOpen) return
-    if (query.length < 3) return
-
-    const timeout = window.setTimeout(() => {
-      const params = new URLSearchParams({ song: query })
-      if (credit) params.set("credit", credit)
-      if (genre) params.set("genre", genre)
-      suggestionsFetcher.load(`/search/suggestions?${params.toString()}`)
-    }, 600)
-
-    return () => window.clearTimeout(timeout)
-  }, [credit, genre, isSuggestionOpen, song, suggestionsFetcher])
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const params = new URLSearchParams()
-    const nextCredit = credit.trim()
-    const nextSong = song.trim()
-    const nextGenre = genre.trim()
-    const nextRole = role.trim()
-    const nextYear = year.trim()
-    const nextDecade = decade.trim()
-    const nextCountry = country.trim()
-    const nextFormat = format.trim()
-    if (nextCredit) params.append("credit", nextCredit)
-    if (nextSong) params.append("song", nextSong)
-    if (nextGenre) params.append("genre", nextGenre)
-    if (nextRole) params.append("role", nextRole)
-    if (nextYear) {
-      params.append("year", nextYear)
-    } else if (nextDecade) {
-      params.append("decade", nextDecade)
-    }
-    if (nextCountry) params.append("country", nextCountry)
-    if (nextFormat) params.append("format", nextFormat)
-    if (sort !== "relevance") params.append("sort", sort)
-    submit(params, { action: "/search", method: "get" })
-  }
-
-  const buildSuggestionHref = (suggestion: SearchResult) => {
-    const params = new URLSearchParams()
-    params.set("song", song || suggestion.title)
-    if (credit) params.set("credit", credit)
-    if (genre) params.set("genre", genre)
-    if (role) params.set("role", role)
-    if (year) {
-      params.set("year", year)
-    } else if (decade) {
-      params.set("decade", decade)
-    }
-    if (country) params.set("country", country)
-    if (format) params.set("format", format)
-    if (sort !== "relevance") params.set("sort", sort)
-    if (suggestion.type === "release") params.set("kind", "release")
-    return `/search/${suggestion.id}?${params.toString()}`
-  }
-
   return (
     <Box maxW="980px" mx="auto">
-        <HStack spacing={3} mb={5} align="center">
-          <Text color="text.accent">
-            <AppIcon name="search" size={20} />
+      <HStack spacing={3} mb={5} align="center">
+        <Text color="text.accent">
+          <AppIcon name="search" size={20} />
+        </Text>
+        <Box>
+          <Heading as="h1" size="md">
+            {t("search.heading")}
+          </Heading>
+          <Text fontSize="sm" color="text.muted" role="status">
+            {isSearchPending ? t("search.summary.searching") : headingSummary}
           </Text>
-          <Box>
-            <Heading as="h1" size="md">
-              {t("search.heading")}
-            </Heading>
-            <Text fontSize="sm" color="text.muted">
-              {isSearchPending
-                ? t("search.summary.searching")
-                : headingSummary}
-            </Text>
-          </Box>
-        </HStack>
-
-        <Box
-          as={Form}
-          action="/search"
-          method="get"
-          onSubmit={handleSubmit}
-          bg="bg.surface"
-          borderWidth="1px"
-          borderColor="border.default"
-          borderRadius="md"
-          p={{ base: 3, md: 4 }}
-          boxShadow="sm"
-        >
-          <Grid
-            gap={2}
-            templateColumns={{
-              base: "1fr",
-              md: "minmax(0, 1fr) minmax(180px, 220px) 140px",
-              lg: "minmax(0, 1fr) minmax(190px, 230px) minmax(150px, 180px) 140px",
-            }}
-          >
-            <InputGroup
-              size="md"
-              gridColumn={{ base: "auto", md: "1 / -1", lg: "auto" }}
-            >
-              <InputLeftElement color="text.icon">
-                <AppIcon name="user" size={17} />
-              </InputLeftElement>
-              <Input
-                name="credit"
-                placeholder={t("search.field.creditPlaceholder")}
-                value={credit}
-                onChange={(event) => setCredit(event.target.value)}
-                bg="bg.surface"
-              />
-            </InputGroup>
-
-            <Box
-              position="relative"
-              gridColumn={{ base: "auto", md: "1 / 2", lg: "auto" }}
-            >
-              <InputGroup size="md">
-                <InputLeftElement color="text.icon">
-                  <AppIcon name="music" size={17} />
-                </InputLeftElement>
-                <Input
-                  name="song"
-                  placeholder={t("search.field.songPlaceholder")}
-                  value={song}
-                  onChange={(event) => {
-                    setSong(event.target.value)
-                    setIsSuggestionOpen(true)
-                  }}
-                  onFocus={() => setIsSuggestionOpen(true)}
-                  onBlur={() => setIsSuggestionOpen(false)}
-                  autoComplete="off"
-                  bg="bg.surface"
-                />
-              </InputGroup>
-
-              {showSuggestions && (
-                <Box
-                  position="absolute"
-                  zIndex={10}
-                  top="calc(100% + 4px)"
-                  left={0}
-                  right={0}
-                  bg="bg.surface"
-                  borderWidth="1px"
-                  borderColor="border.default"
-                  borderRadius="md"
-                  boxShadow="md"
-                  overflow="hidden"
-                >
-                  {suggestions.map((suggestion) => (
-                    <Box
-                      key={suggestion.id}
-                      as="a"
-                      href={buildSuggestionHref(suggestion)}
-                      display="block"
-                      px={4}
-                      py={2}
-                      _hover={{ bg: "bg.subtle" }}
-                      onMouseDown={(event: MouseEvent) => event.preventDefault()}
-                    >
-                      <HStack spacing={2}>
-                        <Text color="text.icon">
-                          <AppIcon name="music" size={15} />
-                        </Text>
-                        <Box minW={0}>
-                          <Text fontSize="sm" fontWeight="medium" noOfLines={1}>
-                            {suggestion.title}
-                          </Text>
-                          {suggestion.year && (
-                            <Text fontSize="xs" color="text.subtle">
-                              {suggestion.year}
-                            </Text>
-                          )}
-                        </Box>
-                      </HStack>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </Box>
-
-            <InputGroup
-              size="md"
-              gridColumn={{ base: "auto", md: "2 / 3", lg: "auto" }}
-            >
-              <InputLeftElement color="text.icon">
-                <AppIcon name="tag" size={16} />
-              </InputLeftElement>
-              <Input
-                name="genre"
-                placeholder={t("search.field.genre")}
-                value={genre}
-                onChange={(event) => setGenre(event.target.value)}
-                list="genre-suggestions"
-                bg="bg.surface"
-              />
-            </InputGroup>
-
-            <InputGroup
-              size="md"
-              gridColumn={{ base: "auto", md: "1 / 3", lg: "1 / 4" }}
-            >
-              <InputLeftElement color="text.icon">
-                <AppIcon name="mic" size={16} />
-              </InputLeftElement>
-              <Input
-                name="role"
-                placeholder={t("search.field.rolePlaceholder")}
-                value={role}
-                onChange={(event) => setRole(event.target.value)}
-                list="role-suggestions"
-                bg="bg.surface"
-              />
-            </InputGroup>
-
-            <Button
-              colorScheme="blue"
-              type="submit"
-              isDisabled={isSearchDisabled}
-              isLoading={isSearchPending}
-              loadingText={t("search.submitting")}
-              leftIcon={<AppIcon name="search" size={16} />}
-              gridColumn={{ base: "auto", md: "3 / 4", lg: "auto" }}
-              h="40px"
-              px={4}
-              w="100%"
-              whiteSpace="nowrap"
-            >
-              {t("search.submit")}
-            </Button>
-          </Grid>
-
-          <SimpleGrid
-            columns={{ base: 1, md: 4 }}
-            gap={2}
-            mt={3}
-          >
-            <Input
-              aria-label={t("search.field.year")}
-              inputMode="numeric"
-              maxLength={4}
-              placeholder={t("search.field.year")}
-              value={year}
-              onChange={(event) => {
-                setYear(event.target.value)
-                if (event.target.value.trim()) setDecade("")
-              }}
-              bg="bg.surface"
-            />
-            <Input
-              aria-label={t("search.field.country")}
-              placeholder={t("search.field.country")}
-              value={country}
-              onChange={(event) => setCountry(event.target.value)}
-              list="country-suggestions"
-              bg="bg.surface"
-            />
-            <Select
-              aria-label={t("search.field.format")}
-              value={format}
-              onChange={(event) => setFormat(event.target.value)}
-              bg="bg.surface"
-            >
-              <option value="">{t("search.field.anyFormat")}</option>
-              {FORMAT_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </Select>
-            <Select
-              aria-label={t("search.field.sort")}
-              value={sort}
-              onChange={(event) => setSort(getSortOption(event.target.value))}
-              bg="bg.surface"
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {t(option.label)}
-                </option>
-              ))}
-            </Select>
-          </SimpleGrid>
-
-          <Wrap mt={3} spacing={2}>
-            <WrapItem>
-              <Button
-                type="button"
-                size="sm"
-                variant={!decade ? "solid" : "outline"}
-                colorScheme={!decade ? "blue" : "gray"}
-                onClick={() => setDecade("")}
-              >
-                {t("search.decade.any")}
-              </Button>
-            </WrapItem>
-            {DECADE_OPTIONS.map((option) => (
-              <WrapItem key={option}>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={decade === option ? "solid" : "outline"}
-                  colorScheme={decade === option ? "blue" : "gray"}
-                  aria-pressed={decade === option}
-                  onClick={() => {
-                    setYear("")
-                    setDecade(decade === option ? "" : option)
-                  }}
-                >
-                  {t("search.decade.label", { decade: option })}
-                </Button>
-              </WrapItem>
-            ))}
-          </Wrap>
-
-          <datalist id="genre-suggestions">
-            <option value="Jazz" />
-            <option value="Rock" />
-            <option value="Pop" />
-            <option value="Classical" />
-            <option value="Hip Hop" />
-            <option value="Electronic" />
-          </datalist>
-          <datalist id="role-suggestions">
-            <option value="drums" />
-            <option value="bass" />
-            <option value="guitar" />
-            <option value="piano" />
-            <option value="saxophone" />
-            <option value="vocals" />
-          </datalist>
-          <datalist id="country-suggestions">
-            <option value="US" />
-            <option value="UK" />
-            <option value="Japan" />
-            <option value="France" />
-            <option value="Germany" />
-            <option value="Italy" />
-          </datalist>
         </Box>
-
-        <SearchHistoryPanel
-          entries={searchHistory.entries}
-          onClear={searchHistory.clearEntries}
-          onRemove={searchHistory.removeEntry}
-        />
-
-        <Box mt={4}>
-          {isSearchPending ? (
-            <ResultListSkeleton />
-          ) : (
-            <>
-              {errorText && (
-                <Alert status="warning" mb={3} borderRadius="md">
-                  <AlertIcon />
-                  <AlertDescription>{errorText}</AlertDescription>
-                </Alert>
-              )}
-              {results.length > 0 || !errorText ? (
-                <ResultList
-                  results={results}
-                  hasSearched={hasSearchCriteria}
-                  searchParams={resultSearchParams}
-                  pagination={{
-                    ...pagination,
-                    nextPageHref: buildSearchPageHref(
-                      submittedState,
-                      pagination.page + 1
-                    ),
-                  }}
-                />
-              ) : null}
-            </>
-          )}
-        </Box>
-    </Box>
-  )
-}
-
-function SearchHistoryPanel({
-  entries,
-  onClear,
-  onRemove,
-}: {
-  entries: SearchHistoryEntry[]
-  onClear: () => void
-  onRemove: (id: string) => void
-}) {
-  const { t } = useI18n()
-
-  if (entries.length === 0) return null
-
-  return (
-    <Box
-      bg="bg.surface"
-      borderWidth="1px"
-      borderColor="border.default"
-      borderRadius="md"
-      boxShadow="sm"
-      mt={3}
-      p={3}
-    >
-      <HStack justify="space-between" mb={2} spacing={3}>
-        <HStack color="text.secondary" spacing={2}>
-          <AppIcon name="clock" size={15} />
-          <Text fontSize="sm" fontWeight="semibold">
-            {t("history.title")}
-          </Text>
-        </HStack>
-        <Button size="xs" variant="ghost" onClick={onClear}>
-          {t("history.clear")}
-        </Button>
       </HStack>
-      <VStack align="stretch" spacing={1}>
-        {entries.map((entry, index) => {
-          const summary = buildSearchHistorySummary(entry, t)
 
-          return (
-            <HStack key={entry.id} spacing={2}>
-              <Button
-                as={RouterLink}
-                to={buildSearchHistoryHref(entry)}
-                justifyContent="flex-start"
-                leftIcon={<AppIcon name="search" size={14} />}
-                minW={0}
-                size="sm"
-                variant="ghost"
-                whiteSpace="normal"
-                w="100%"
-              >
-                <Text as="span" noOfLines={1}>
-                  {summary}
-                </Text>
-              </Button>
-              <Button
-                aria-label={t("history.delete", { index: index + 1 })}
-                flexShrink={0}
-                onClick={() => onRemove(entry.id)}
-                size="sm"
-                variant="ghost"
-              >
-                <AppIcon name="x" size={14} />
-              </Button>
-            </HStack>
-          )
-        })}
-      </VStack>
+      <SearchForm
+        submittedState={submittedState}
+        isSearchPending={isSearchPending}
+      />
+
+      <SearchHistoryPanel
+        entries={searchHistory.entries}
+        onClear={searchHistory.clearEntries}
+        onRemove={searchHistory.removeEntry}
+      />
+
+      <Box as="section" aria-labelledby="search-results-heading" mt={4}>
+        <VisuallyHidden as="h2" id="search-results-heading">
+          {t("results.heading")}
+        </VisuallyHidden>
+        {isSearchPending ? (
+          <ResultListSkeleton />
+        ) : (
+          <>
+            {errorText && (
+              <Alert status="warning" mb={3} borderRadius="md">
+                <AlertIcon />
+                <AlertDescription>{errorText}</AlertDescription>
+              </Alert>
+            )}
+            {results.length > 0 || !errorText ? (
+              <ResultList
+                results={results}
+                hasSearched={hasSearchCriteria}
+                searchParams={resultSearchParams}
+                pagination={{
+                  ...pagination,
+                  nextPageHref: buildSearchPageHref(
+                    submittedState,
+                    pagination.page + 1
+                  ),
+                }}
+              />
+            ) : null}
+          </>
+        )}
+      </Box>
     </Box>
   )
 }

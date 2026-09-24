@@ -1,6 +1,7 @@
 import { Box, HStack, Text, VStack } from "@chakra-ui/react"
 import { Link as RouterLink } from "react-router"
 
+import { AppIcon } from "../AppIcon"
 import type { TrackItem } from "~/types"
 import { buildDetailHref, type DetailLocation } from "~/utils/albumDetail"
 
@@ -23,6 +24,7 @@ export function TrackList({
             key={`${track.position}-${track.title}`}
             as={RouterLink}
             to={buildDetailHref(location, { track: track.position })}
+            aria-current={isSelected ? "true" : undefined}
             p={2}
             borderRadius="md"
             bg={isSelected ? "bg.selected" : "transparent"}
@@ -32,9 +34,16 @@ export function TrackList({
           >
             <HStack justify="space-between" align="start">
               <Box>
-                <Text fontSize="sm" fontWeight={isSelected ? "bold" : "normal"}>
-                  {track.title}
-                </Text>
+                <HStack spacing={1.5}>
+                  {isSelected && (
+                    <Box as="span" color="text.accent" flexShrink={0}>
+                      <AppIcon name="play" size={12} fill="currentColor" strokeWidth={0} />
+                    </Box>
+                  )}
+                  <Text fontSize="sm" fontWeight={isSelected ? "bold" : "normal"}>
+                    {track.title}
+                  </Text>
+                </HStack>
                 <Text fontSize="xs" color="text.muted">
                   {track.position}
                 </Text>

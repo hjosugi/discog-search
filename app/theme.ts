@@ -36,6 +36,41 @@ export const theme = extendTheme({
       "logo.fg": { default: "white", _dark: "gray.900" },
     },
   },
+  components: {
+    Button: {
+      variants: {
+        // Chakra's light-mode solid buttons use the 500 shade, which puts white
+        // text below the WCAG AA 4.5:1 contrast ratio for blue, red, and green.
+        // Use the 600 shade (and darker hover/active) instead.
+        solid: ({
+          colorScheme: c,
+          colorMode,
+        }: {
+          colorScheme: string
+          colorMode: "light" | "dark"
+        }) => {
+          if (c === "gray" || colorMode === "dark") return {}
+          return {
+            bg: `${c}.600`,
+            _hover: { bg: `${c}.700`, _disabled: { bg: `${c}.600` } },
+            _active: { bg: `${c}.800` },
+          }
+        },
+        // The link variant's 500 shade (e.g. gray.500 on white, 4.0:1) is also
+        // below AA for body-size text.
+        link: ({
+          colorScheme: c,
+          colorMode,
+        }: {
+          colorScheme: string
+          colorMode: "light" | "dark"
+        }) =>
+          colorMode === "dark"
+            ? {}
+            : { color: `${c}.600`, _active: { color: `${c}.800` } },
+      },
+    },
+  },
   styles: {
     global: {
       "html, body": {
