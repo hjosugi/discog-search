@@ -14,6 +14,8 @@ import {
 } from "@chakra-ui/react"
 import { Link } from "react-router"
 
+import { useI18n } from "../i18n/I18nProvider"
+import type { Translate } from "../i18n/locale"
 import type { SearchResult } from "../types"
 import type { FavoriteAlbumInput } from "../utils/favorites"
 import { AppIcon } from "./AppIcon"
@@ -143,12 +145,14 @@ export function ResultList({
 }
 
 export function ResultListSkeleton() {
+  const { t } = useI18n()
+
   return (
     <Box mt={5} role="status" aria-live="polite">
       <HStack color="text.muted" mb={3} spacing={2}>
         <Spinner size="sm" />
         <Text fontSize="sm" fontWeight="medium">
-          Searching albums
+          {t("results.searching")}
         </Text>
       </HStack>
       {[0, 1, 2].map((item) => (
@@ -184,6 +188,7 @@ export function ResultListSkeleton() {
 }
 
 function InitialSearchGuide() {
+  const { t } = useI18n()
   const examples = [
     { label: "credit: Tony Williams", to: "/search?credit=Tony+Williams" },
     { label: "song: Nefertiti", to: "/search?song=Nefertiti" },
@@ -215,10 +220,10 @@ function InitialSearchGuide() {
         </Box>
         <Box minW={0}>
           <Heading as="h2" size="sm">
-            Start with a credit, song, or genre
+            {t("results.guide.title")}
           </Heading>
           <Text color="text.muted" fontSize="sm" mt={1}>
-            Search examples:
+            {t("results.guide.examples")}
           </Text>
           <Wrap mt={3} spacing={2}>
             {examples.map((example) => (
@@ -252,8 +257,9 @@ function EmptySearchState({
 }: {
   searchParams: { [key: string]: string }
 }) {
-  const summary = buildSearchSummary(searchParams)
-  const relaxedLinks = buildRelaxedSearchLinks(searchParams)
+  const { t } = useI18n()
+  const summary = buildSearchSummary(searchParams, t)
+  const relaxedLinks = buildRelaxedSearchLinks(searchParams, t)
 
   return (
     <Box
@@ -280,12 +286,12 @@ function EmptySearchState({
         </Box>
         <Box minW={0}>
           <Heading as="h2" size="sm">
-            No albums found for {summary}
+            {t("results.empty.title", { summary })}
           </Heading>
           <VStack align="stretch" color="text.muted" fontSize="sm" mt={2} spacing={1}>
-            <Text>Check alternate spellings or shorter artist names.</Text>
-            <Text>Try searching only the credit or only the song.</Text>
-            {searchParams.genre ? <Text>Remove genre for a broader match.</Text> : null}
+            <Text>{t("results.empty.spelling")}</Text>
+            <Text>{t("results.empty.single")}</Text>
+            {searchParams.genre ? <Text>{t("results.empty.genreHint")}</Text> : null}
           </VStack>
           {relaxedLinks.length > 0 ? (
             <Wrap mt={4} spacing={2}>
@@ -358,6 +364,7 @@ function PaginationSummary({
     totalItems: number
   }
 }) {
+  const { t, formatNumber: formatCount } = useI18n()
   const totalItems = Math.max(pagination.totalItems, resultsCount)
 
   if (pagination.page === 1 && totalItems === resultsCount) {
@@ -367,11 +374,14 @@ function PaginationSummary({
   return (
     <HStack justify="space-between" align="center" mb={3} spacing={3}>
       <Text color="text.muted" fontSize="sm">
-        Showing {formatCount(resultsCount)} of {formatCount(totalItems)} albums
+        {t("results.showing", {
+          count: formatCount(resultsCount),
+          total: formatCount(totalItems),
+        })}
       </Text>
       {pagination.page > 1 ? (
         <Badge colorScheme="blue" textTransform="none">
-          {pagination.page} pages loaded
+          {t("results.pagesLoaded", { count: pagination.page })}
         </Badge>
       ) : null}
     </HStack>
@@ -389,6 +399,7 @@ function PaginationFooter({
     nextPageHref: string
   }
 }) {
+  const { t, formatNumber: formatCount } = useI18n()
   const hasNextPage =
     pagination.page < pagination.totalPages && !pagination.reachedPageLimit
 
@@ -414,34 +425,38 @@ function PaginationFooter({
           leftIcon={<AppIcon name="search" size={15} />}
           variant="outline"
         >
-          Load more
+          {t("results.loadMore")}
         </Button>
       ) : (
         <Text color="text.muted" fontSize="sm">
-          Page limit reached before all {formatCount(pagination.totalItems)}
-          {" "}
-          Discogs matches were loaded.
+          {t("results.pageLimit", { total: formatCount(pagination.totalItems) })}
         </Text>
       )}
     </Box>
   )
 }
 
-function buildSearchSummary(searchParams: { [key: string]: string }) {
+function buildSearchSummary(
+  searchParams: { [key: string]: string },
+  t: Translate
+) {
   const criteria = [
-    searchParams.credit ? `credit "${searchParams.credit}"` : "",
-    searchParams.song ? `song "${searchParams.song}"` : "",
-    searchParams.genre ? `genre "${searchParams.genre}"` : "",
+    searchParams.credit ? t("results.empty.credit", { value: searchParams.credit }) : "",
+    searchParams.song ? t("results.empty.song", { value: searchParams.song }) : "",
+    searchParams.genre ? t("results.empty.genre", { value: searchParams.genre }) : "",
   ].filter(Boolean)
 
-  return criteria.length > 0 ? criteria.join(", ") : "this search"
+  return criteria.length > 0 ? criteria.join(", ") : t("results.empty.thisSearch")
 }
 
-function buildRelaxedSearchLinks(searchParams: { [key: string]: string }) {
+function buildRelaxedSearchLinks(
+  searchParams: { [key: string]: string },
+  t: Translate
+) {
   return [
-    { key: "credit", label: "Remove credit" },
-    { key: "song", label: "Remove song" },
-    { key: "genre", label: "Remove genre" },
+    { key: "credit", label: t("results.empty.removeCredit") },
+    { key: "song", label: t("results.empty.removeSong") },
+    { key: "genre", label: t("results.empty.removeGenre") },
   ]
     .filter((item) => searchParams[item.key])
     .map((item) => ({
@@ -490,8 +505,4 @@ function buildTags(result: SearchResult) {
 
 function firstValue(values?: string[]) {
   return values?.find(Boolean)
-}
-
-function formatCount(value: number) {
-  return value.toLocaleString("en-US")
 }

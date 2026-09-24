@@ -285,6 +285,35 @@ page is rate limited and reports the rate limit alongside them.
 This keeps API failures from becoming application crashes and reduces repeat
 calls during typing and navigation.
 
+## Internationalization
+
+The UI ships in English and Japanese. Dictionaries live in
+`app/i18n/messages.ts`; `en` defines the keys and `ja` must provide all of them
+with the same `{placeholders}` (a unit test enforces both). `app/i18n/locale.ts`
+has the pure helpers (`translate`, `negotiateLocale`, cookie parsing, number
+and date formatting), and `app/i18n/I18nProvider.tsx` exposes `useI18n()`
+(`t`, `locale`, `setLocale`, `formatNumber`, `formatDate`).
+
+Locale resolution:
+
+1. An explicit choice from the header language selector is stored in the
+   `lang` cookie (one year).
+2. Otherwise the Worker negotiates `Accept-Language`. Because the app is an SPA
+   whose `index.html` is prerendered, the Worker rewrites the HTML shell's
+   `<html lang>` and `data-locale` for every HTML response
+   (`app/server/html.ts`, with `Vary: Cookie, Accept-Language`).
+3. Without the Worker (plain Vite dev) the client falls back to
+   `navigator.languages`.
+
+The locale is kept in a small external store so the prerendered English shell
+hydrates without a mismatch and switches right after hydration; `<html lang>`
+follows the selected locale. Route `meta()` functions use `getActiveLocale()`.
+
+API errors carry a stable `code` (see `toApiError()`), and the UI shows the
+localized text for that code via `translateApiError()`, falling back to the
+English server message for unknown codes. Discogs data (titles, names, roles,
+formats) is shown as Discogs returns it.
+
 ## Styling
 
 Chakra UI v2 is the only styling system. The theme lives in `app/theme.ts` and

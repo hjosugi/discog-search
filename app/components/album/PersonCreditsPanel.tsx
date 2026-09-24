@@ -11,6 +11,7 @@ import { useState } from "react"
 import { Link as RouterLink } from "react-router"
 
 import { AppIcon } from "../AppIcon"
+import { useI18n } from "~/i18n/I18nProvider"
 import { buildDetailHref, type DetailLocation } from "~/utils/albumDetail"
 import type { PersonAlbumCredits } from "~/utils/trackCredits"
 
@@ -35,6 +36,7 @@ export function PersonCreditsPanel({
   location: DetailLocation
 }) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const { t } = useI18n()
   const rows = credits?.tracks || []
   const visibleRows = isExpanded ? rows : rows.slice(0, COLLAPSED_ROWS)
 
@@ -54,17 +56,22 @@ export function PersonCreditsPanel({
           <AppIcon name="user" size={16} />
         </Text>
         <Heading as="h2" size="sm" id="person-credits-heading">
-          {person} on this album
+          {t("album.person.title", { person })}
         </Heading>
       </HStack>
       <Text color="text.muted" fontSize="sm" mb={credits ? 3 : 0}>
         {credits
-          ? `Credited on ${rows.length} of ${totalTracks} tracks${
+          ? `${t("album.person.summary", {
+              count: rows.length,
+              total: totalTracks,
+            })}${
               credits.albumRoles.length > 0
-                ? ` · Album credits: ${credits.albumRoles.join(", ")}`
+                ? t("album.person.albumRoles", {
+                    roles: credits.albumRoles.join(", "),
+                  })
                 : ""
             }`
-          : `No credits for ${person} were found on this release. Other versions may list different personnel.`}
+          : t("album.person.none", { person })}
       </Text>
 
       {rows.length > 0 && (
@@ -112,7 +119,9 @@ export function PersonCreditsPanel({
           onClick={() => setIsExpanded((value) => !value)}
           aria-expanded={isExpanded}
         >
-          {isExpanded ? "Show fewer tracks" : `Show all ${rows.length} tracks`}
+          {isExpanded
+            ? t("album.person.showFewer")
+            : t("album.person.showAll", { count: rows.length })}
         </Button>
       )}
     </Box>

@@ -43,8 +43,21 @@ import {
   type SearchHistoryEntry,
   type SearchHistoryInput,
 } from "../hooks/useSearchHistory"
+import { getActiveLocale, useI18n } from "../i18n/I18nProvider"
+import {
+  createTranslator,
+  formatNumber,
+  translateApiError,
+  type Translate,
+} from "../i18n/locale"
+import type { MessageKey } from "../i18n/messages"
 import { SearchResult } from "../types"
-import { api, getApiErrorMessage, toQueryObject } from "../utils/apiClient"
+import {
+  api,
+  getApiErrorCode,
+  getApiErrorMessage,
+  toQueryObject,
+} from "../utils/apiClient"
 import {
   buildPageMeta,
   compactText,
@@ -74,14 +87,15 @@ type LoaderData = {
     reachedPageLimit: boolean
   }
   errorMessage?: string
+  errorCode?: string
 }
 
 const FORMAT_OPTIONS = ["LP", "CD", "Album", "Single", '12"', '7"', "Cassette"]
 
-const SORT_OPTIONS: Array<{ value: SearchSortOption; label: string }> = [
-  { value: "relevance", label: "Relevance" },
-  { value: "year_desc", label: "Year (newest)" },
-  { value: "year_asc", label: "Year (oldest)" },
+const SORT_OPTIONS: Array<{ value: SearchSortOption; label: MessageKey }> = [
+  { value: "relevance", label: "search.sort.relevance" },
+  { value: "year_desc", label: "search.sort.yearDesc" },
+  { value: "year_asc", label: "search.sort.yearAsc" },
 ]
 
 type SearchMetaArgs = {
@@ -92,15 +106,22 @@ type SearchMetaArgs = {
 }
 
 export function meta({ data, location }: SearchMetaArgs) {
+  const locale = getActiveLocale()
+  const t = createTranslator(locale)
   const searchState = getSearchState(new URLSearchParams(location.search))
-  const criteria = formatSearchCriteria(searchState)
+  const criteria = formatSearchCriteria(searchState, t)
   const title = criteria
-    ? `${criteria} | Sideman Album Finder`
-    : "Sideman Album Finder | Discogs credits search"
+    ? `${criteria} | ${t("app.name")}`
+    : t("search.meta.defaultTitle")
   const resultCount = data?.pagination.totalItems || data?.results.length || 0
   const description = criteria
-    ? `${resultCount ? `${resultCount} Discogs matches for ` : "Search Discogs album credits for "}${criteria}. Filter by player, track, genre, year, country, format, and role.`
-    : "Search Discogs album credits by player, track, genre, year, country, format, and role."
+    ? t("search.meta.description", {
+        prefix: resultCount
+          ? t("search.meta.matches", { count: formatNumber(locale, resultCount) })
+          : t("search.meta.searchFor"),
+        criteria,
+      })
+    : t("search.meta.defaultDescription")
 
   return buildPageMeta({
     title,
@@ -122,6 +143,7 @@ export async function clientLoader({ request }: { request: Request }) {
         response.error,
         "Could not fetch Discogs search results. Please try again."
       ),
+      errorCode: getApiErrorCode(response.error) ?? "search_failed",
     }
   }
 
@@ -129,7 +151,9 @@ export async function clientLoader({ request }: { request: Request }) {
 }
 
 export default function SearchPage() {
-  const { results, pagination, errorMessage } = useLoaderData<LoaderData>()
+  const { results, pagination, errorMessage, errorCode } =
+    useLoaderData<LoaderData>()
+  const { t, formatNumber: formatCount } = useI18n()
   const [searchParams] = useSearchParams()
   const navigation = useNavigation()
   const submit = useSubmit()
@@ -198,8 +222,14 @@ export default function SearchPage() {
   const headingSummary = getHeadingSummary(
     results.length,
     pagination.totalItems,
-    hasSearchCriteria
+    hasSearchCriteria,
+    t,
+    formatCount
   )
+  const errorText =
+    errorCode === "search_failed"
+      ? t("error.searchFailed")
+      : translateApiError(t, errorCode, errorMessage || "")
 
   useEffect(() => {
     setCredit(submittedCredit)
@@ -290,11 +320,11 @@ export default function SearchPage() {
           </Text>
           <Box>
             <Heading as="h1" size="md">
-              Search albums
+              {t("search.heading")}
             </Heading>
             <Text fontSize="sm" color="text.muted">
               {isSearchPending
-                ? "Searching albums"
+                ? t("search.summary.searching")
                 : headingSummary}
             </Text>
           </Box>
@@ -329,7 +359,7 @@ export default function SearchPage() {
               </InputLeftElement>
               <Input
                 name="credit"
-                placeholder="Credit / performer, e.g. Tony Williams"
+                placeholder={t("search.field.creditPlaceholder")}
                 value={credit}
                 onChange={(event) => setCredit(event.target.value)}
                 bg="bg.surface"
@@ -346,7 +376,7 @@ export default function SearchPage() {
                 </InputLeftElement>
                 <Input
                   name="song"
-                  placeholder="Song / track, e.g. Night in Tunisia"
+                  placeholder={t("search.field.songPlaceholder")}
                   value={song}
                   onChange={(event) => {
                     setSong(event.target.value)
@@ -414,7 +444,7 @@ export default function SearchPage() {
               </InputLeftElement>
               <Input
                 name="genre"
-                placeholder="Genre"
+                placeholder={t("search.field.genre")}
                 value={genre}
                 onChange={(event) => setGenre(event.target.value)}
                 list="genre-suggestions"
@@ -431,7 +461,7 @@ export default function SearchPage() {
               </InputLeftElement>
               <Input
                 name="role"
-                placeholder="Instrument / role filter, e.g. drums"
+                placeholder={t("search.field.rolePlaceholder")}
                 value={role}
                 onChange={(event) => setRole(event.target.value)}
                 list="role-suggestions"
@@ -444,7 +474,7 @@ export default function SearchPage() {
               type="submit"
               isDisabled={isSearchDisabled}
               isLoading={isSearchPending}
-              loadingText="Searching"
+              loadingText={t("search.submitting")}
               leftIcon={<AppIcon name="search" size={16} />}
               gridColumn={{ base: "auto", md: "3 / 4", lg: "auto" }}
               h="40px"
@@ -452,7 +482,7 @@ export default function SearchPage() {
               w="100%"
               whiteSpace="nowrap"
             >
-              Search
+              {t("search.submit")}
             </Button>
           </Grid>
 
@@ -462,10 +492,10 @@ export default function SearchPage() {
             mt={3}
           >
             <Input
-              aria-label="Year"
+              aria-label={t("search.field.year")}
               inputMode="numeric"
               maxLength={4}
-              placeholder="Year"
+              placeholder={t("search.field.year")}
               value={year}
               onChange={(event) => {
                 setYear(event.target.value)
@@ -474,20 +504,20 @@ export default function SearchPage() {
               bg="bg.surface"
             />
             <Input
-              aria-label="Country"
-              placeholder="Country"
+              aria-label={t("search.field.country")}
+              placeholder={t("search.field.country")}
               value={country}
               onChange={(event) => setCountry(event.target.value)}
               list="country-suggestions"
               bg="bg.surface"
             />
             <Select
-              aria-label="Format"
+              aria-label={t("search.field.format")}
               value={format}
               onChange={(event) => setFormat(event.target.value)}
               bg="bg.surface"
             >
-              <option value="">Any format</option>
+              <option value="">{t("search.field.anyFormat")}</option>
               {FORMAT_OPTIONS.map((option) => (
                 <option key={option} value={option}>
                   {option}
@@ -495,14 +525,14 @@ export default function SearchPage() {
               ))}
             </Select>
             <Select
-              aria-label="Sort"
+              aria-label={t("search.field.sort")}
               value={sort}
               onChange={(event) => setSort(getSortOption(event.target.value))}
               bg="bg.surface"
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {t(option.label)}
                 </option>
               ))}
             </Select>
@@ -517,7 +547,7 @@ export default function SearchPage() {
                 colorScheme={!decade ? "blue" : "gray"}
                 onClick={() => setDecade("")}
               >
-                Any decade
+                {t("search.decade.any")}
               </Button>
             </WrapItem>
             {DECADE_OPTIONS.map((option) => (
@@ -533,7 +563,7 @@ export default function SearchPage() {
                     setDecade(decade === option ? "" : option)
                   }}
                 >
-                  {option}s
+                  {t("search.decade.label", { decade: option })}
                 </Button>
               </WrapItem>
             ))}
@@ -576,13 +606,13 @@ export default function SearchPage() {
             <ResultListSkeleton />
           ) : (
             <>
-              {errorMessage && (
+              {errorText && (
                 <Alert status="warning" mb={3} borderRadius="md">
                   <AlertIcon />
-                  <AlertDescription>{errorMessage}</AlertDescription>
+                  <AlertDescription>{errorText}</AlertDescription>
                 </Alert>
               )}
-              {results.length > 0 || !errorMessage ? (
+              {results.length > 0 || !errorText ? (
                 <ResultList
                   results={results}
                   hasSearched={hasSearchCriteria}
@@ -612,6 +642,8 @@ function SearchHistoryPanel({
   onClear: () => void
   onRemove: (id: string) => void
 }) {
+  const { t } = useI18n()
+
   if (entries.length === 0) return null
 
   return (
@@ -628,16 +660,16 @@ function SearchHistoryPanel({
         <HStack color="text.secondary" spacing={2}>
           <AppIcon name="clock" size={15} />
           <Text fontSize="sm" fontWeight="semibold">
-            Recent Searches
+            {t("history.title")}
           </Text>
         </HStack>
         <Button size="xs" variant="ghost" onClick={onClear}>
-          Clear
+          {t("history.clear")}
         </Button>
       </HStack>
       <VStack align="stretch" spacing={1}>
         {entries.map((entry, index) => {
-          const summary = buildSearchHistorySummary(entry)
+          const summary = buildSearchHistorySummary(entry, t)
 
           return (
             <HStack key={entry.id} spacing={2}>
@@ -657,7 +689,7 @@ function SearchHistoryPanel({
                 </Text>
               </Button>
               <Button
-                aria-label={`Delete recent item ${index + 1}`}
+                aria-label={t("history.delete", { index: index + 1 })}
                 flexShrink={0}
                 onClick={() => onRemove(entry.id)}
                 size="sm"
@@ -681,18 +713,19 @@ function buildSearchPageHref(searchState: SearchState, page: number) {
 function getHeadingSummary(
   resultsCount: number,
   totalItems: number,
-  hasSearchCriteria: boolean
+  hasSearchCriteria: boolean,
+  t: Translate,
+  formatCount: (value: number) => string
 ) {
   if (resultsCount > 0) {
     const total = Math.max(resultsCount, totalItems)
     return resultsCount === total
-      ? `${formatCount(resultsCount)} albums`
-      : `${formatCount(resultsCount)} of ${formatCount(total)} albums`
+      ? t("search.summary.results", { count: formatCount(resultsCount) })
+      : t("search.summary.partial", {
+          count: formatCount(resultsCount),
+          total: formatCount(total),
+        })
   }
 
-  return hasSearchCriteria ? "No albums found" : "Search by player"
-}
-
-function formatCount(value: number) {
-  return value.toLocaleString("en-US")
+  return hasSearchCriteria ? t("search.summary.none") : t("search.summary.idle")
 }

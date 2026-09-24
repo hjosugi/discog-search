@@ -2,6 +2,7 @@ import { Box, Button, Heading, HStack, Text } from "@chakra-ui/react"
 import { Link as RouterLink } from "react-router"
 
 import { AppIcon } from "../AppIcon"
+import { useI18n } from "~/i18n/I18nProvider"
 
 export function AlbumErrorState({
   status,
@@ -10,6 +11,8 @@ export function AlbumErrorState({
   status: number
   message: string
 }) {
+  const { t } = useI18n()
+
   return (
     <Box
       maxW="760px"
@@ -25,7 +28,7 @@ export function AlbumErrorState({
           <AppIcon name="disc" size={18} />
         </Text>
         <Heading as="h1" size="md">
-          Album details unavailable
+          {t("album.error.title")}
         </Heading>
       </HStack>
       <Text color="text.muted" fontSize="sm" mb={4}>
@@ -37,7 +40,7 @@ export function AlbumErrorState({
         leftIcon={<AppIcon name="arrowLeft" size={15} />}
         variant="link"
       >
-        Back to Search
+        {t("album.error.back")}
       </Button>
     </Box>
   )

@@ -6,6 +6,8 @@ import {
   type DiscogsCacheEnv,
   type DiscogsEnv,
 } from "./discogs"
+import { resolveRequestLocale } from "../i18n/locale"
+import { localizeHtmlResponse } from "./html"
 import {
   ApiHttpError,
   getMasterVersionsApiData,
@@ -208,12 +210,15 @@ export function createServerApp({ env = {} }: ServerAppOptions = {}) {
         },
       }
     )
-    .all("*", ({ request }) =>
-      env.ASSETS?.fetch(request) ??
-      new Response("Not found", {
-        status: 404,
-      })
-    )
+    .all("*", async ({ request }) => {
+      const response = env.ASSETS
+        ? await env.ASSETS.fetch(request)
+        : new Response("Not found", { status: 404 })
+
+      return request.method === "GET"
+        ? localizeHtmlResponse(response, resolveRequestLocale(request))
+        : response
+    })
 }
 
 export const app = createServerApp()

@@ -1,6 +1,7 @@
 import { Button, Wrap, WrapItem } from "@chakra-ui/react"
 import { Link as RouterLink } from "react-router"
 
+import { useI18n } from "~/i18n/I18nProvider"
 import { buildDetailHref, type DetailLocation } from "~/utils/albumDetail"
 import { roleMatchesFilter } from "~/utils/trackCredits"
 
@@ -13,6 +14,8 @@ export function RoleFilterLinks({
   activeRole: string
   roles: string[]
 }) {
+  const { t } = useI18n()
+
   if (roles.length === 0 && !activeRole) {
     return null
   }
@@ -45,7 +48,7 @@ export function RoleFilterLinks({
             size="xs"
             variant="ghost"
           >
-            Clear
+            {t("album.clearRole")}
           </Button>
         </WrapItem>
       )}

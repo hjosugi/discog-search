@@ -10,6 +10,7 @@ import {
 import { useState } from "react"
 
 import { AppIcon } from "../AppIcon"
+import { useI18n } from "~/i18n/I18nProvider"
 import type { DiscogsVideo } from "~/types"
 import {
   buildYouTubeEmbedUrl,
@@ -47,6 +48,7 @@ function YouTubeLiteEmbed({
   videoId: string
 }) {
   const [isPlaying, setIsPlaying] = useState(false)
+  const { t } = useI18n()
   const duration = formatVideoDuration(video.duration)
 
   return (
@@ -55,7 +57,7 @@ function YouTubeLiteEmbed({
         {isPlaying ? (
           <iframe
             src={buildYouTubeEmbedUrl(videoId)}
-            title={`YouTube video player: ${video.title}`}
+            title={t("album.video.player", { title: video.title })}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
@@ -65,7 +67,7 @@ function YouTubeLiteEmbed({
           <Box
             as="button"
             type="button"
-            aria-label={`Play ${video.title}`}
+            aria-label={t("album.video.play", { title: video.title })}
             onClick={() => setIsPlaying(true)}
             position="relative"
             cursor="pointer"

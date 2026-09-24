@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 
+import { createTranslator, type Translate } from "../i18n/locale"
 import type { SearchSortOption } from "../utils/searchRanking"
 
 export type SearchHistoryInput = {
@@ -85,19 +86,22 @@ export function buildSearchHistoryHref(input: SearchHistoryInput) {
   return queryString ? `/search?${queryString}` : "/search"
 }
 
-export function buildSearchHistorySummary(input: SearchHistoryInput) {
+export function buildSearchHistorySummary(
+  input: SearchHistoryInput,
+  t: Translate = createTranslator("en")
+) {
   const parts = [
-    input.credit ? `credit "${input.credit}"` : "",
-    input.song ? `song "${input.song}"` : "",
-    input.genre ? `genre "${input.genre}"` : "",
-    input.role ? `role "${input.role}"` : "",
+    input.credit ? t("history.credit", { value: input.credit }) : "",
+    input.song ? t("history.song", { value: input.song }) : "",
+    input.genre ? t("history.genre", { value: input.genre }) : "",
+    input.role ? t("history.role", { value: input.role }) : "",
     input.year ? input.year : "",
-    !input.year && input.decade ? `${input.decade}s` : "",
+    !input.year && input.decade ? t("history.decade", { decade: input.decade }) : "",
     input.country ? input.country : "",
     input.format ? input.format : "",
   ].filter(Boolean)
 
-  return parts.length > 0 ? parts.join(" / ") : "Search"
+  return parts.length > 0 ? parts.join(" / ") : t("history.fallback")
 }
 
 function readSearchHistory() {

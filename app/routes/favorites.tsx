@@ -12,18 +12,22 @@ import { Link as RouterLink } from "react-router"
 
 import { AppIcon } from "../components/AppIcon"
 import { useFavorites } from "../hooks/useFavorites"
+import { getActiveLocale, useI18n } from "../i18n/I18nProvider"
+import { createTranslator } from "../i18n/locale"
 import { buildFavoriteHref, type FavoriteAlbum } from "../utils/favorites"
 import { buildPageMeta } from "../utils/pageMeta"
 
 export function meta() {
+  const t = createTranslator(getActiveLocale())
   return buildPageMeta({
-    title: "Favorites | Sideman Album Finder",
-    description: "Albums you saved while digging through Discogs credits.",
+    title: t("favorites.meta.title"),
+    description: t("favorites.meta.description"),
   })
 }
 
 export default function FavoritesPage() {
   const { entries, removeFavorite, clearFavorites } = useFavorites()
+  const { t } = useI18n()
 
   return (
     <Box maxW="980px" mx="auto">
@@ -34,16 +38,18 @@ export default function FavoritesPage() {
           </Text>
           <Box>
             <Heading as="h1" size="md">
-              Favorites
+              {t("favorites.heading")}
             </Heading>
             <Text fontSize="sm" color="text.muted">
-              {entries.length === 1 ? "1 saved album" : `${entries.length} saved albums`}
+              {entries.length === 1
+                ? t("favorites.count.one")
+                : t("favorites.count.other", { count: entries.length })}
             </Text>
           </Box>
         </HStack>
         {entries.length > 0 && (
           <Button size="sm" variant="ghost" onClick={clearFavorites}>
-            Clear all
+            {t("favorites.clearAll")}
           </Button>
         )}
       </HStack>
@@ -72,10 +78,11 @@ function FavoriteCard({
   entry: FavoriteAlbum
   onRemove: () => void
 }) {
+  const { t, formatDate } = useI18n()
   const details = [entry.artist, entry.year].filter(Boolean).join(" / ")
   const memo = [
-    entry.credit ? `credit: ${entry.credit}` : "",
-    entry.song ? `song: ${entry.song}` : "",
+    entry.credit ? t("favorites.memo.credit", { value: entry.credit }) : "",
+    entry.song ? t("favorites.memo.song", { value: entry.song }) : "",
   ]
     .filter(Boolean)
     .join(" · ")
@@ -135,14 +142,14 @@ function FavoriteCard({
                 </HStack>
               )}
               <Text fontSize="xs" color="text.subtle" mt={1}>
-                Saved {new Date(entry.savedAt).toLocaleDateString()}
+                {t("favorites.saved", { date: formatDate(entry.savedAt) })}
               </Text>
             </Box>
           </HStack>
         </RouterLink>
       </Box>
       <IconButton
-        aria-label={`Remove ${entry.title} from favorites`}
+        aria-label={t("favorite.remove", { title: entry.title })}
         icon={<AppIcon name="x" size={16} />}
         onClick={onRemove}
         size="sm"
@@ -156,6 +163,8 @@ function FavoriteCard({
 }
 
 function EmptyFavorites() {
+  const { t } = useI18n()
+
   return (
     <Box
       bg="bg.surface"
@@ -165,10 +174,10 @@ function EmptyFavorites() {
       p={{ base: 4, md: 5 }}
     >
       <Heading as="h2" size="sm">
-        No favorites yet
+        {t("favorites.empty.title")}
       </Heading>
       <Text color="text.muted" fontSize="sm" mt={1}>
-        Use the star on a search result or album page to save it here.
+        {t("favorites.empty.body")}
       </Text>
       <Button
         as={RouterLink}
@@ -178,7 +187,7 @@ function EmptyFavorites() {
         colorScheme="blue"
         leftIcon={<AppIcon name="search" size={15} />}
       >
-        Search albums
+        {t("favorites.empty.cta")}
       </Button>
     </Box>
   )

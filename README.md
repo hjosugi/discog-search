@@ -8,6 +8,7 @@ The app runs on Cloudflare Workers through the Cloudflare Vite plugin. Search us
 
 - React 19 and React Router v7 Framework Mode
 - Elysia API routes with Eden Treaty client calls
+- English and Japanese UI (`app/i18n/`), chosen from the header selector or `Accept-Language`
 - Chakra UI v2 as the only styling system (theme and semantic color tokens in `app/theme.ts`)
 - Cloudflare Workers and `wrangler`
 - Bun 1.3.14+, Node.js 20+

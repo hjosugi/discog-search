@@ -1,3 +1,4 @@
+import { createTranslator, type Translate } from "../i18n/locale"
 import type { SearchResult } from "../types"
 import { MAX_SEARCH_PAGES } from "./discogsSearch"
 import type { SearchSortOption } from "./searchRanking"
@@ -86,13 +87,16 @@ export function buildSearchParams(searchState: SearchState) {
   return params
 }
 
-export function formatSearchCriteria(searchState: SearchState) {
+export function formatSearchCriteria(
+  searchState: SearchState,
+  t: Translate = createTranslator("en")
+) {
   const parts = [
-    searchState.credit && `"${searchState.credit}" credits`,
-    searchState.song && `"${searchState.song}" tracks`,
-    searchState.genre && `${searchState.genre} albums`,
+    searchState.credit && t("criteria.credits", { value: searchState.credit }),
+    searchState.song && t("criteria.tracks", { value: searchState.song }),
+    searchState.genre && t("criteria.genre", { value: searchState.genre }),
     searchState.year && searchState.year,
-    searchState.decade && `${searchState.decade}s`,
+    searchState.decade && t("criteria.decade", { decade: searchState.decade }),
     searchState.country && searchState.country,
     searchState.format && searchState.format,
     searchState.role && searchState.role,

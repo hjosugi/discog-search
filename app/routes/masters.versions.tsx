@@ -1,9 +1,13 @@
 import type { MasterVersionsApiData } from "../server/data"
-import { api, getApiErrorMessage } from "../utils/apiClient"
+import {
+  api,
+  getApiErrorCode,
+  getApiErrorMessage,
+} from "../utils/apiClient"
 
 export type MasterVersionsLoaderData =
   | ({ ok: true } & MasterVersionsApiData)
-  | { ok: false; masterId: string; errorMessage: string }
+  | { ok: false; masterId: string; errorMessage: string; errorCode?: string }
 
 /** Data-only route used by the detail page's "Other versions" panel. */
 export async function clientLoader({
@@ -26,6 +30,7 @@ export async function clientLoader({
         response.error,
         "Could not load other versions."
       ),
+      errorCode: getApiErrorCode(response.error),
     }
   }
 

@@ -1,5 +1,6 @@
 import { useMemo } from "react"
 import {
+  data as routeData,
   isRouteErrorResponse,
   Link as RouterLink,
   useLoaderData,
@@ -20,6 +21,8 @@ import { RoleFilterLinks } from "~/components/album/RoleFilterLinks"
 import { SectionTitle } from "~/components/album/SectionTitle"
 import { TrackList } from "~/components/album/TrackList"
 import { VideoList } from "~/components/album/VideoList"
+import { getActiveLocale, useI18n } from "~/i18n/I18nProvider"
+import { translateApiError } from "~/i18n/locale"
 import type { ReleaseApiData } from "~/server/data"
 import {
   buildAlbumPageMeta,
@@ -31,7 +34,12 @@ import {
   getThumbnailImage,
   pickSelectedTrack,
 } from "~/utils/albumDetail"
-import { api, getApiErrorMessage, toQueryObject } from "~/utils/apiClient"
+import {
+  api,
+  getApiErrorCode,
+  getApiErrorMessage,
+  toQueryObject,
+} from "~/utils/apiClient"
 import { buildPlaybackQuery } from "~/utils/streaming"
 import {
   filterCreditsByRole,
@@ -62,8 +70,11 @@ export async function clientLoader({
   })
 
   if (response.error) {
-    throw new Response(
-      getApiErrorMessage(response.error, "Failed to fetch album data."),
+    throw routeData(
+      {
+        message: getApiErrorMessage(response.error, "Failed to fetch album data."),
+        code: getApiErrorCode(response.error),
+      },
       { status: response.status }
     )
   }
@@ -78,19 +89,20 @@ export async function clientLoader({
 }
 
 export function meta({ data }: { data?: LoaderData }) {
-  return buildAlbumPageMeta(data)
+  return buildAlbumPageMeta(data, getActiveLocale())
 }
 
 export function ErrorBoundary() {
   const error = useRouteError()
+  const { t } = useI18n()
 
   return (
     <AlbumErrorState
       status={isRouteErrorResponse(error) ? error.status : 500}
       message={
         isRouteErrorResponse(error)
-          ? String(error.data)
-          : "Could not load album details."
+          ? getRouteErrorMessage(error.data, t)
+          : t("error.albumFailed")
       }
     />
   )
@@ -107,6 +119,7 @@ export default function AlbumView() {
     detailId,
     detailKind,
   } = useLoaderData<LoaderData>()
+  const { t } = useI18n()
   const location = { detailId, detailKind, backQuery }
   const tracks = useMemo(
     () => release.tracklist || master.tracklist || [],
@@ -182,14 +195,17 @@ export default function AlbumView() {
         }
         performerSummary={
           roleFilter
-            ? `${visiblePerformanceCredits.length}/${performanceCredits.length} performers`
-            : `${performanceCredits.length} performers`
+            ? t("album.performerCountFiltered", {
+                visible: visiblePerformanceCredits.length,
+                total: performanceCredits.length,
+              })
+            : t("album.performerCount", { count: performanceCredits.length })
         }
       />
 
       <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={5} mt={6}>
         <Panel>
-          <SectionTitle>Performers</SectionTitle>
+          <SectionTitle>{t("album.performers")}</SectionTitle>
           <RoleFilterLinks
             location={location}
             activeRole={roleFilter}
@@ -200,28 +216,28 @@ export default function AlbumView() {
             highlightPerson={creditSearch}
             emptyText={
               roleFilter
-                ? `No ${roleFilter} credits were found for this track.`
-                : "No performer credits were found for this track."
+                ? t("album.noRoleCredits", { role: roleFilter })
+                : t("album.noPerformers")
             }
           />
 
           {otherCredits.length > 0 && (
             <Box mt={5}>
-              <SectionTitle>Credits</SectionTitle>
+              <SectionTitle>{t("album.credits")}</SectionTitle>
               <CreditList credits={otherCredits} highlightPerson={creditSearch} />
             </Box>
           )}
 
           {videos.length > 0 && (
             <Box mt={5}>
-              <SectionTitle>Videos</SectionTitle>
+              <SectionTitle>{t("album.videos")}</SectionTitle>
               <VideoList videos={videos} />
             </Box>
           )}
         </Panel>
 
         <Panel>
-          <SectionTitle>Tracks</SectionTitle>
+          <SectionTitle>{t("album.tracks")}</SectionTitle>
           <TrackList
             location={location}
             tracks={tracks}
@@ -248,7 +264,7 @@ export default function AlbumView() {
         leftIcon={<AppIcon name="arrowLeft" size={15} />}
         variant="link"
       >
-        Back to List
+        {t("album.backToList")}
       </Button>
     </Box>
   )
@@ -257,4 +273,19 @@ export default function AlbumView() {
 function getCreditSearch(backQuery: string) {
   const params = new URLSearchParams(backQuery)
   return (params.get("credit") || params.get("person") || "").trim()
+}
+
+function getRouteErrorMessage(
+  data: unknown,
+  t: ReturnType<typeof useI18n>["t"]
+) {
+  if (data && typeof data === "object" && "message" in data) {
+    const { message, code } = data as { message?: unknown; code?: unknown }
+    return translateApiError(
+      t,
+      typeof code === "string" ? code : undefined,
+      typeof message === "string" ? message : t("error.albumFailed")
+    )
+  }
+  return typeof data === "string" && data ? data : t("error.albumFailed")
 }

@@ -14,6 +14,7 @@ import {
 import type { ReactNode } from "react"
 
 import { AppIcon } from "../AppIcon"
+import { useI18n } from "~/i18n/I18nProvider"
 import type { TrackItem } from "~/types"
 import { buildStreamingLinks } from "~/utils/streaming"
 
@@ -125,6 +126,8 @@ function SelectedTrackCard({
   track: TrackItem
   performerSummary: string
 }) {
+  const { t } = useI18n()
+
   return (
     <Box
       bg="bg.surface"
@@ -135,7 +138,7 @@ function SelectedTrackCard({
     >
       <HStack color="text.muted" fontSize="xs" mb={1} spacing={1}>
         <AppIcon name="music" size={14} />
-        <Text>Selected Track</Text>
+        <Text>{t("album.selectedTrack")}</Text>
       </HStack>
       <HStack justify="space-between" align="start" flexWrap="wrap" gap={2}>
         <Box>

@@ -11,6 +11,7 @@ import type { ReactNode } from "react"
 
 import { Footer } from "./components/Footer"
 import { Header } from "./components/Header"
+import { I18nProvider, useLocale } from "./i18n/I18nProvider"
 import { theme } from "./theme"
 
 export const links: LinksFunction = () => [
@@ -20,8 +21,10 @@ export const links: LinksFunction = () => [
 ]
 
 export function Layout({ children }: { children: ReactNode }) {
+  const locale = useLocale()
+
   return (
-    <html lang="en">
+    <html lang={locale}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -40,23 +43,25 @@ export function Layout({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <ChakraProvider theme={theme}>
-      <Box
-        minH="100vh"
-        bg="bg.canvas"
-        display="flex"
-        flexDirection="column"
-      >
-        <Header />
+      <I18nProvider>
         <Box
-          as="main"
-          flex="1"
-          px={{ base: 4, md: 6 }}
-          py={{ base: 5, md: 8 }}
+          minH="100vh"
+          bg="bg.canvas"
+          display="flex"
+          flexDirection="column"
         >
-          <Outlet />
+          <Header />
+          <Box
+            as="main"
+            flex="1"
+            px={{ base: 4, md: 6 }}
+            py={{ base: 5, md: 8 }}
+          >
+            <Outlet />
+          </Box>
+          <Footer />
         </Box>
-        <Footer />
-      </Box>
+      </I18nProvider>
     </ChakraProvider>
   )
 }

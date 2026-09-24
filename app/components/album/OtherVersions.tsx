@@ -16,6 +16,8 @@ import { Link as RouterLink, useFetcher } from "react-router"
 
 import { AppIcon } from "../AppIcon"
 import { SectionTitle } from "./SectionTitle"
+import { useI18n } from "~/i18n/I18nProvider"
+import { translateApiError } from "~/i18n/locale"
 import type { MasterVersionsLoaderData } from "~/routes/masters.versions"
 import type { MasterVersion } from "~/types"
 import { buildVersionHref } from "~/utils/albumDetail"
@@ -45,6 +47,7 @@ export function OtherVersions({
     totalItems: number
   } | null>(null)
   const [filter, setFilter] = useState("")
+  const { t, formatNumber } = useI18n()
   const { load } = fetcher
   const data = fetcher.data
 
@@ -83,13 +86,19 @@ export function OtherVersions({
     )
   }, [current, filter])
   const isLoading = fetcher.state === "loading"
-  const errorMessage = data && !data.ok ? data.errorMessage : ""
+  const errorMessage =
+    data && !data.ok
+      ? translateApiError(t, data.errorCode, t("album.versions.error"))
+      : ""
 
   return (
     <Box as="section" aria-labelledby="other-versions-heading">
       <SectionTitle id="other-versions-heading">
-        Other versions
-        {current ? ` (${current.totalItems.toLocaleString()})` : ""}
+        {current
+          ? t("album.versions.titleCount", {
+              count: formatNumber(current.totalItems),
+            })
+          : t("album.versions.title")}
       </SectionTitle>
 
       {current && current.versions.length > 8 && (
@@ -98,8 +107,8 @@ export function OtherVersions({
             <AppIcon name="search" size={14} />
           </InputLeftElement>
           <Input
-            aria-label="Filter versions by country, year, format, or label"
-            placeholder="Filter: Japan, CD, 1977..."
+            aria-label={t("album.versions.filter")}
+            placeholder={t("album.versions.filterPlaceholder")}
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
             bg="bg.surface"
@@ -133,7 +142,7 @@ export function OtherVersions({
           ))}
           {visibleVersions.length === 0 && (
             <Text as="li" color="text.muted" fontSize="sm">
-              No versions match this filter.
+              {t("album.versions.noMatch")}
             </Text>
           )}
         </VStack>
@@ -149,7 +158,7 @@ export function OtherVersions({
             load(`/masters/${masterId}/versions?page=${current.page + 1}`)
           }
         >
-          Load more versions
+          {t("album.versions.loadMore")}
         </Button>
       )}
     </Box>
@@ -165,6 +174,7 @@ function VersionRow({
   isCurrent: boolean
   href: string
 }) {
+  const { t } = useI18n()
   const year = getReleaseYear(version.released)
   const labelText = [version.label, version.catno].filter(Boolean).join(" ")
 
@@ -188,11 +198,11 @@ function VersionRow({
             <HStack spacing={2} flexWrap="wrap">
               <Text fontSize="sm" fontWeight="semibold">
                 {[year, version.country].filter(Boolean).join(" · ") ||
-                  "Unknown year"}
+                  t("album.versions.unknownYear")}
               </Text>
               {isCurrent && (
                 <Badge colorScheme="blue" textTransform="none">
-                  Current
+                  {t("album.versions.current")}
                 </Badge>
               )}
             </HStack>

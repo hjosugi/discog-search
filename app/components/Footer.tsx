@@ -7,8 +7,11 @@ import {
 } from "@chakra-ui/react"
 
 import { AppIcon } from "./AppIcon"
+import { useI18n } from "../i18n/I18nProvider"
 
 export function Footer() {
+  const { t } = useI18n()
+
   return (
     <Box
       as="footer"
@@ -26,7 +29,7 @@ export function Footer() {
           spacing={3}
         >
           <Text>
-            Data provided by{" "}
+            {t("footer.dataBy")}{" "}
             <Link
               href="https://www.discogs.com/"
               color="text.link"
@@ -45,7 +48,7 @@ export function Footer() {
           >
             <HStack as="span" spacing={1}>
               <AppIcon name="external" size={14} />
-              <Text as="span">GitHub repository</Text>
+              <Text as="span">{t("footer.github")}</Text>
             </HStack>
           </Link>
         </HStack>

@@ -1,6 +1,7 @@
 import { HStack, Link, Text } from "@chakra-ui/react"
 import { Link as RouterLink } from "react-router"
 
+import { useI18n } from "~/i18n/I18nProvider"
 import { buildSearchListHref } from "~/utils/albumDetail"
 
 export function DetailBreadcrumb({
@@ -10,10 +11,12 @@ export function DetailBreadcrumb({
   albumTitle: string
   backQuery: string
 }) {
+  const { t } = useI18n()
+
   return (
     <HStack
       as="nav"
-      aria-label="Breadcrumb"
+      aria-label={t("album.breadcrumb")}
       color="text.muted"
       fontSize="sm"
       mb={4}
@@ -26,7 +29,7 @@ export function DetailBreadcrumb({
         fontWeight="semibold"
         _hover={{ color: "text.linkHover", textDecoration: "underline" }}
       >
-        Search
+        {t("album.breadcrumb.search")}
       </Link>
       <Text aria-hidden="true">&gt;</Text>
       <Text aria-current="page" color="text.secondary" noOfLines={1}>

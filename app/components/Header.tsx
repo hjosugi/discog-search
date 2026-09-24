@@ -5,15 +5,24 @@ import {
   Container,
   HStack,
   Link,
+  Select,
   Text,
 } from "@chakra-ui/react"
 import { Link as RouterLink, NavLink } from "react-router"
 
 import { AppIcon } from "./AppIcon"
 import { useFavorites } from "../hooks/useFavorites"
+import { useI18n } from "../i18n/I18nProvider"
+import { isLocale } from "../i18n/locale"
+
+const LANGUAGE_OPTIONS = [
+  { value: "en", label: "English" },
+  { value: "ja", label: "日本語" },
+] as const
 
 export function Header() {
   const { entries } = useFavorites()
+  const { locale, setLocale, t } = useI18n()
 
   return (
     <Box
@@ -28,7 +37,7 @@ export function Header() {
             as={RouterLink}
             to="/search"
             _hover={{ textDecoration: "none" }}
-            aria-label="Sideman Album Finder home"
+            aria-label={t("app.home")}
           >
             <HStack spacing={3}>
               <Box
@@ -46,16 +55,16 @@ export function Header() {
               </Box>
               <Box>
                 <Text color="text.default" fontSize="md" fontWeight="bold">
-                  Sideman Album Finder
+                  {t("app.name")}
                 </Text>
                 <Text color="text.muted" fontSize="xs">
-                  Discogs credits search
+                  {t("app.tagline")}
                 </Text>
               </Box>
             </HStack>
           </Link>
 
-          <HStack as="nav" aria-label="Main" spacing={1}>
+          <HStack as="nav" aria-label={t("nav.main")} spacing={1}>
             <Button
               as={NavLink}
               to="/favorites"
@@ -64,13 +73,29 @@ export function Header() {
               leftIcon={<AppIcon name="star" size={15} />}
               _activeLink={{ bg: "bg.selected", color: "text.link" }}
             >
-              Favorites
+              {t("nav.favorites")}
               {entries.length > 0 && (
                 <Badge ml={2} colorScheme="yellow" borderRadius="full">
                   {entries.length}
                 </Badge>
               )}
             </Button>
+            <Select
+              aria-label={t("nav.language")}
+              value={locale}
+              onChange={(event) => {
+                if (isLocale(event.target.value)) setLocale(event.target.value)
+              }}
+              size="sm"
+              variant="filled"
+              w="auto"
+            >
+              {LANGUAGE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} lang={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
           </HStack>
         </HStack>
       </Container>

@@ -4,6 +4,7 @@ import type {
   DiscogsVideo,
   TrackItem,
 } from "../types"
+import { createTranslator, type Locale } from "../i18n/locale"
 import { buildPageMeta, compactText } from "./pageMeta"
 import { normalizeText } from "./text"
 import { findBestTrackMatch } from "./trackCredits"
@@ -117,30 +118,43 @@ export function pickSelectedTrack(
 }
 
 export function buildAlbumPageMeta(
-  data?: {
-    master: DiscogsMaster
-    release: DiscogsRelease
-    searchQuery: string
-    selectedTrackPosition: string | null
-  }
+  data:
+    | {
+        master: DiscogsMaster
+        release: DiscogsRelease
+        searchQuery: string
+        selectedTrackPosition: string | null
+      }
+    | undefined,
+  locale: Locale = "en"
 ) {
+  const t = createTranslator(locale)
+
   if (!data) {
     return buildPageMeta({
-      title: "Album details | Sideman Album Finder",
-      description: "Explore Discogs album credits, track performers, and release details.",
+      title: t("album.meta.defaultTitle"),
+      description: t("album.meta.defaultDescription"),
     })
   }
 
   const { master, release, searchQuery, selectedTrackPosition } = data
   const artistName = getArtistName(release, master)
-  const title = `${release.title}${artistName ? ` by ${artistName}` : ""} | Sideman Album Finder`
+  const title = t("album.meta.title", {
+    title: release.title,
+    artist: artistName ? t("album.meta.by", { artist: artistName }) : "",
+  })
   const selectedTrack = pickSelectedTrack(
     release.tracklist || master.tracklist || [],
     selectedTrackPosition,
     searchQuery
   )
-  const trackText = selectedTrack ? ` Track focus: ${selectedTrack.title}.` : ""
-  const description = `${artistName ? `${artistName} - ` : ""}${release.title}${release.year ? ` (${release.year})` : ""}. Explore Discogs performers, credits, tracks, and source release links.${trackText}`
+  const album = `${artistName ? `${artistName} - ` : ""}${release.title}${release.year ? ` (${release.year})` : ""}`
+  const description = t("album.meta.description", {
+    album,
+    track: selectedTrack
+      ? t("album.meta.trackFocus", { title: selectedTrack.title })
+      : "",
+  })
 
   return buildPageMeta({
     title: compactText(title, 90),

@@ -2,6 +2,7 @@ import { Badge, Box, HStack, Link, Text, VStack } from "@chakra-ui/react"
 import { Link as RouterLink } from "react-router"
 
 import { AppIcon } from "../AppIcon"
+import { useI18n } from "~/i18n/I18nProvider"
 import { buildCreditSearchPath } from "~/utils/albumDetail"
 import {
   creditMatchesPerson,
@@ -19,10 +20,12 @@ export function CreditList({
   /** Emphasizes the credits of the person the user searched for. */
   highlightPerson?: string
 }) {
+  const { t } = useI18n()
+
   if (credits.length === 0) {
     return (
       <Text color="text.muted" fontSize="sm">
-        {emptyText || "No matching credits were found."}
+        {emptyText || t("album.noCredits")}
       </Text>
     )
   }
@@ -49,6 +52,8 @@ function CreditCard({
   credit: Credit
   isHighlighted: boolean
 }) {
+  const { t } = useI18n()
+
   return (
     <Box
       p={3}
@@ -83,10 +88,10 @@ function CreditCard({
           textTransform="none"
         >
           {credit.source === "track"
-            ? "track"
+            ? t("album.source.track")
             : credit.isGlobal
-              ? "album"
-              : "range"}
+              ? t("album.source.album")
+              : t("album.source.range")}
         </Badge>
       </HStack>
     </Box>

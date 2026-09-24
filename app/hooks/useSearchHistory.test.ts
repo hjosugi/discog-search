@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 
+import { createTranslator } from "../i18n/locale"
 import {
   addSearchHistoryEntry,
   buildSearchHistoryHref,
@@ -60,6 +61,12 @@ describe("search history helpers", () => {
   it("summarizes saved criteria", () => {
     expect(buildSearchHistorySummary(baseSearch)).toBe(
       'credit "Tony Williams" / song "Nefertiti" / genre "Jazz" / role "drums" / 1960s / US / LP'
+    )
+  })
+
+  it("summarizes saved criteria in Japanese", () => {
+    expect(buildSearchHistorySummary(baseSearch, createTranslator("ja"))).toBe(
+      "クレジット「Tony Williams」 / 曲名「Nefertiti」 / ジャンル「Jazz」 / 担当「drums」 / 1960年代 / US / LP"
     )
   })
 })
