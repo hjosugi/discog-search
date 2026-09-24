@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest"
 import type { TrackItem } from "../types"
 import {
   creditAppliesToTrack,
+  creditMatchesPerson,
   dedupeCredits,
   filterCreditsByRole,
   findBestTrackMatch,
+  getPersonAlbumCredits,
   getRoleFilterOptions,
   getTrackCredits,
   isPerformanceRole,
@@ -140,5 +142,67 @@ describe("credit role helpers", () => {
       "Miles Davis",
       "Teo Macero",
     ])
+  })
+})
+
+describe("getPersonAlbumCredits", () => {
+  const albumTracks: TrackItem[] = [
+    { position: "", type_: "heading", title: "Side A" },
+    ...tracks,
+  ]
+
+  it("expands range credits and merges track-level credits per track", () => {
+    const credits = getPersonAlbumCredits(
+      "Tony Williams",
+      [
+        ...albumTracks.slice(0, 5),
+        {
+          ...albumTracks[5],
+          extraartists: [{ name: "Tony Williams (2)", role: "Percussion" }],
+        },
+      ],
+      [
+        { name: "Tony Williams (2)", role: "Drums", tracks: "A1 to B1" },
+        { name: "Wayne Shorter", role: "Saxophone" },
+      ]
+    )
+
+    expect(
+      credits?.tracks.map(({ track, roles }) => [track.position, roles])
+    ).toEqual([
+      ["A1", ["Drums"]],
+      ["A2", ["Drums"]],
+      ["B1", ["Drums"]],
+      ["B3", ["Percussion"]],
+    ])
+    expect(credits?.albumRoles).toEqual([])
+  })
+
+  it("applies album-wide performance credits to every track and keeps other album roles separate", () => {
+    const credits = getPersonAlbumCredits("Teo Macero", albumTracks, [
+      { name: "Teo Macero", role: "Producer" },
+      { name: "Teo Macero", role: "Saxophone" },
+    ])
+
+    expect(credits?.tracks).toHaveLength(5)
+    expect(credits?.tracks[0].roles).toEqual(["Saxophone"])
+    expect(credits?.albumRoles).toEqual(["Producer"])
+  })
+
+  it("matches name variations and partial names", () => {
+    expect(creditMatchesPerson({ name: "Herbie Hancock" }, "hancock")).toBe(true)
+    expect(
+      creditMatchesPerson({ name: "Anthony Williams", anv: "Tony Williams" }, "Tony Williams")
+    ).toBe(true)
+    expect(creditMatchesPerson({ name: "Tony Williams" }, "Tony Allen")).toBe(false)
+    expect(creditMatchesPerson({ name: "Tony Williams" }, "")).toBe(false)
+  })
+
+  it("returns null when the person is not credited", () => {
+    expect(
+      getPersonAlbumCredits("Ron Carter", albumTracks, [
+        { name: "Tony Williams", role: "Drums" },
+      ])
+    ).toBeNull()
   })
 })

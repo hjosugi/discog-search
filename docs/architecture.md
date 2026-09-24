@@ -209,6 +209,19 @@ the release currently shown is marked with `aria-current` and a "Current"
 badge. The panel loads through the data-only client route
 `routes/masters.versions.tsx`, so it never blocks the main detail request.
 
+When the detail page is opened from a credit search (`credit=<name>` in the
+URL), a panel at the top answers the reverse question "on which tracks of this
+album does this person appear, and as what?". `getPersonAlbumCredits()` in
+`app/utils/trackCredits.ts` runs `getTrackCredits()` for every playable track
+(so `tracks` ranges such as "A1 to B2" are expanded by
+`creditAppliesToTrack()`), keeps the credits whose name or name variation
+(`anv`) matches the searched person after normalization (Discogs
+disambiguation suffixes like "(2)" are ignored), and lists album-wide
+non-performance roles such as Producer separately. Each row links to the same
+page with `track=<position>`, and the searched person's cards in the credit
+lists below are highlighted. If the person is not credited on this release,
+the panel says so and points to other versions.
+
 The Videos section shows up to three Discogs videos, preferring the ones whose
 title mentions the selected track. YouTube URLs (`watch?v=`, `youtu.be/`,
 `/embed/`, `/shorts/`, ...) are parsed by `app/utils/video.ts` and rendered as

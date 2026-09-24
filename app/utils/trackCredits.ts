@@ -40,6 +40,84 @@ export const PERFORMANCE_ROLE_PATTERNS = [
   "performer",
 ]
 
+export type PersonTrackCredit = {
+  track: TrackItem
+  roles: string[]
+}
+
+export type PersonAlbumCredits = {
+  /** Tracks the person is credited on, in tracklist order. */
+  tracks: PersonTrackCredit[]
+  /** Album-wide roles that are not tied to tracks (e.g. Producer). */
+  albumRoles: string[]
+}
+
+/**
+ * Matches a searched person against a Discogs credit. Discogs appends
+ * disambiguation suffixes ("Tony Williams (2)") and may credit a name
+ * variation (`anv`), so both are compared after normalization; a query whose
+ * words all appear in the credited name ("Hancock") also matches.
+ */
+export function creditMatchesPerson(
+  credit: Pick<ExtraArtist, "name" | "anv">,
+  person: string
+) {
+  const query = normalizeText(person)
+  if (!query) return false
+
+  const names = [credit.name, credit.anv].map((value) => normalizeText(value))
+  if (names.includes(query)) return true
+
+  const queryTokens = query.split(" ")
+  const nameTokens = new Set(normalizeText(credit.name).split(" "))
+  return queryTokens.every((token) => nameTokens.has(token))
+}
+
+/**
+ * The reverse view of `getTrackCredits`: for one person, which tracks of the
+ * album they are credited on and in which roles. Release-level credits are
+ * expanded with `creditAppliesToTrack`, so "A1 to B2" ranges count for every
+ * track in the range. Album-wide performance credits count for every track;
+ * album-wide non-performance credits are reported as `albumRoles`.
+ */
+export function getPersonAlbumCredits(
+  person: string,
+  tracks: TrackItem[],
+  releaseCredits: ExtraArtist[] = []
+): PersonAlbumCredits | null {
+  if (!normalizeText(person)) return null
+
+  const playableTracks = tracks.filter((track) => track.type_ === "track")
+  const personTracks = playableTracks
+    .map((track) => {
+      const roles = getTrackCredits(track, playableTracks, releaseCredits)
+        .filter((credit) => creditMatchesPerson(credit, person))
+        .filter((credit) => !credit.isGlobal || isPerformanceRole(credit.role))
+        .map((credit) => credit.role)
+      return { track, roles: uniqueRoles(roles) }
+    })
+    .filter((entry) => entry.roles.length > 0)
+  const albumRoles = uniqueRoles(
+    releaseCredits
+      .filter((credit) => !credit.tracks && !isPerformanceRole(credit.role))
+      .filter((credit) => creditMatchesPerson(credit, person))
+      .map((credit) => credit.role)
+  )
+
+  if (personTracks.length === 0 && albumRoles.length === 0) return null
+  return { tracks: personTracks, albumRoles }
+}
+
+function uniqueRoles(roles: string[]) {
+  const seen = new Set<string>()
+  return roles.filter((role) => {
+    const key = normalizeText(role)
+    if (!role || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 export function findBestTrackMatch(tracks: TrackItem[], query: string) {
   const normalizedQuery = normalizeText(query)
   if (!normalizedQuery) return null

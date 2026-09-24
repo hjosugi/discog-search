@@ -15,6 +15,7 @@ import { CreditList } from "~/components/album/CreditList"
 import { DetailBreadcrumb } from "~/components/album/DetailBreadcrumb"
 import { OtherVersions } from "~/components/album/OtherVersions"
 import { Panel } from "~/components/album/Panel"
+import { PersonCreditsPanel } from "~/components/album/PersonCreditsPanel"
 import { RoleFilterLinks } from "~/components/album/RoleFilterLinks"
 import { SectionTitle } from "~/components/album/SectionTitle"
 import { TrackList } from "~/components/album/TrackList"
@@ -34,6 +35,7 @@ import { api, getApiErrorMessage, toQueryObject } from "~/utils/apiClient"
 import { buildPlaybackQuery } from "~/utils/streaming"
 import {
   filterCreditsByRole,
+  getPersonAlbumCredits,
   getRoleFilterOptions,
   getTrackCredits,
   isPerformanceRole,
@@ -132,10 +134,27 @@ export default function AlbumView() {
   const artistName = getArtistName(release, master)
   const videos = getMatchingVideos(release.videos || [], selectedTrack?.title)
   const masterId = getMasterId(release, master, detailKind)
+  const creditSearch = getCreditSearch(backQuery)
+  const personCredits = useMemo(
+    () =>
+      creditSearch
+        ? getPersonAlbumCredits(creditSearch, tracks, release.extraartists)
+        : null,
+    [creditSearch, release.extraartists, tracks]
+  )
 
   return (
     <Box maxW="1040px" mx="auto">
       <DetailBreadcrumb albumTitle={release.title} backQuery={backQuery} />
+      {creditSearch && (
+        <PersonCreditsPanel
+          person={creditSearch}
+          credits={personCredits}
+          totalTracks={tracks.filter((track) => track.type_ === "track").length}
+          selectedPosition={selectedTrack?.position}
+          location={location}
+        />
+      )}
       <AlbumHeader
         title={release.title}
         artistName={artistName}
@@ -156,7 +175,7 @@ export default function AlbumView() {
               artist: artistName || undefined,
               year: release.year ? String(release.year) : undefined,
               thumb: getThumbnailImage(release, master) || undefined,
-              credit: new URLSearchParams(backQuery).get("credit") || undefined,
+              credit: creditSearch || undefined,
               song: searchQuery || undefined,
             }}
           />
@@ -178,6 +197,7 @@ export default function AlbumView() {
           />
           <CreditList
             credits={visiblePerformanceCredits}
+            highlightPerson={creditSearch}
             emptyText={
               roleFilter
                 ? `No ${roleFilter} credits were found for this track.`
@@ -188,7 +208,7 @@ export default function AlbumView() {
           {otherCredits.length > 0 && (
             <Box mt={5}>
               <SectionTitle>Credits</SectionTitle>
-              <CreditList credits={otherCredits} />
+              <CreditList credits={otherCredits} highlightPerson={creditSearch} />
             </Box>
           )}
 
@@ -232,4 +252,9 @@ export default function AlbumView() {
       </Button>
     </Box>
   )
+}
+
+function getCreditSearch(backQuery: string) {
+  const params = new URLSearchParams(backQuery)
+  return (params.get("credit") || params.get("person") || "").trim()
 }
